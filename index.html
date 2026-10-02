@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>BAHUB - Tabela</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<header class="topo" id="topo" data-atual=""></header>
+<script src="js/header.js"></script>
+
+
+<div id="estado-vazio" style="display:none;">
+
+    <div class="icone-vazio">
+        📁
+    </div>
+
+    <div class="texto-vazio">
+        Nenhum projeto encontrado.
+    </div>
+
+    <button
+        class="btn-criar-destaque"
+        onclick="abrirModal()"
+    >
+        + Nova Página
+    </button>
+
+</div>
+
+
+<div id="conteudo-tabela" style="display:none;">
+
+    <div class="tabela-rolagem">
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th
+                    class="cabecalho-clicavel"
+                    onclick="ordenarPor('nome')"
+                >
+                    Aa Nome
+                </th>
+
+                <th
+                    class="cabecalho-clicavel"
+                    onclick="ordenarPor('rotulo')"
+                >
+                    ◫ Rótulo
+                </th>
+
+                <th
+                    class="cabecalho-clicavel"
+                    onclick="ordenarPor('area')"
+                >
+                    ▼ Área
+                </th>
+
+                <th
+                    class="cabecalho-clicavel"
+                    onclick="ordenarPor('prazo')"
+                >
+                    📅 Prazo
+                </th>
+
+                <th style="width:50px;"></th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="corpo-tabela"></tbody>
+
+    </table>
+    </div>
+
+</div>
+
+
+<div
+    class="modal-overlay"
+    id="modalNovaPagina"
+>
+
+    <div class="modal-card">
+
+        <div class="modal-header">
+
+            <h2>
+                Nova Página
+            </h2>
+
+            <button
+                class="btn-fechar"
+                onclick="fecharModal()"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <div class="tipo-selecao">
+
+            <label>
+
+                <input
+                    type="radio"
+                    name="tipoPagina"
+                    value="Projeto"
+                    checked
+                >
+
+                <span>
+                    Projeto
+                </span>
+
+            </label>
+
+
+            <label>
+
+                <input
+                    type="radio"
+                    name="tipoPagina"
+                    value="Melhoria"
+                >
+
+                <span>
+                    Melhoria
+                </span>
+
+            </label>
+
+
+            <label>
+
+                <input
+                    type="radio"
+                    name="tipoPagina"
+                    value="Tarefa"
+                >
+
+                <span>
+                    Tarefa
+                </span>
+
+            </label>
+
+        </div>
+
+
+        <input
+            id="nomePagina"
+            class="input-texto"
+            type="text"
+            placeholder="Título (Ex: Revisão de BPs)"
+        >
+
+
+        <button
+            class="btn-salvar"
+            onclick="salvarNovoProjeto()"
+        >
+            Criar ↵
+        </button>
+
+    </div>
+
+</div>
+
+
+<footer class="footer-bahub">
+    <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
+    <span id="status-nuvem" style="color:#34d399;font-weight:500"></span>
+    <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/db.js"></script>
+<script type="text/plain" id="app-script">
+
+let db = lerBancoDeDados();
+
+
+let ordenacaoAtual = null;
+let direcaoOrdenacao = 1;
+
+
+const ordemRotulos = [
+    'Em andamento',
+    'Esperando',
+    'Atrasado',
+    'A ser feito',
+    'Pronto'
+];
+
+
+let opcoesRotulos =
+    JSON.parse(
+        localStorage.getItem('bahub_opcoes_rotulos')
+    ) || [
+        {
+            nome:'Em andamento',
+            cor:'blue'
+        },
+        {
+            nome:'Pronto',
+            cor:'green'
+        },
+        {
+            nome:'Atrasado',
+            cor:'red'
+        },
+        {
+            nome:'A ser feito',
+            cor:'gray'
+        }
+    ];
+
+
+/* Garante todos os rótulos e a ordem padrão (também em dados já salvos no navegador). */
+const CORES_PADRAO_ROTULO = {
+    'Em andamento':'blue','Esperando':'purple','Atrasado':'red','A ser feito':'gray','Pronto':'green'
+};
+ordemRotulos.forEach(nome => {
+    if (!opcoesRotulos.some(r => r.nome === nome)) {
+        opcoesRotulos.push({ nome, cor: CORES_PADRAO_ROTULO[nome] });
+    }
+});
+opcoesRotulos.sort((a, b) => {
+    const pa = ordemRotulos.indexOf(a.nome), pb = ordemRotulos.indexOf(b.nome);
+    return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
+});
+
+let opcoesArea =
+    JSON.parse(
+        localStorage.getItem('bahub_opcoes_area')
+    ) || [
+        'Projeto',
+        'Melhoria',
+        'Tarefa',
+        'Gerais',
+        'BI e SSAPM'
+    ];
+
+
+function salvarOpcoesGlobais() {
+
+    localStorage.setItem(
+        'bahub_opcoes_rotulos',
+        JSON.stringify(opcoesRotulos)
+    );
+
+    localStorage.setItem(
+        'bahub_opcoes_area',
+        JSON.stringify(opcoesArea)
+    );
+
+}
+
+
+const MAPA_CORES={blue:'#183cf5',green:'#059669',red:'#dc2626',gray:'#4b5563',purple:'#9333ea'};
+function obterCorRotulo(nome) {
+
+    const r =
+        opcoesRotulos.find(
+            x => x.nome === nome
+        );
+
+    const c = r ? r.cor : 'blue';
+    return MAPA_CORES[c] || c;
+
+}
+
+
+function ordenarPor(tipo) {
+
+    if (ordenacaoAtual === tipo) {
+
+        direcaoOrdenacao *= -1;
+
+    } else {
+
+        ordenacaoAtual = tipo;
+        direcaoOrdenacao = 1;
+
+    }
+
+
+    db.sort((a, b) => {
+
+        if (tipo === 'nome') {
+
+            return String(a.nome || '')
+                .localeCompare(
+                    String(b.nome || ''),
+                    'pt-BR',
+                    {
+                        sensitivity:'base'
+                    }
+                ) * direcaoOrdenacao;
+
+        }
+
+
+        if (tipo === 'rotulo') {
+
+            const posA =
+                ordemRotulos.indexOf(
+                    a.rotulo || 'Em andamento'
+                );
+
+            const posB =
+                ordemRotulos.indexOf(
+                    b.rotulo || 'Em andamento'
+                );
+
+
+            const ordemA =
+                posA === -1
+                    ? ordemRotulos.length
+                    : posA;
+
+
+            const ordemB =
+                posB === -1
+                    ? ordemRotulos.length
+                    : posB;
+
+
+            return (
+                ordemA - ordemB
+            ) * direcaoOrdenacao;
+
+        }
+
+
+        if (tipo === 'area') {
+
+            return String(a.area || '')
+                .localeCompare(
+                    String(b.area || ''),
+                    'pt-BR',
+                    {
+                        sensitivity:'base'
+                    }
+                ) * direcaoOrdenacao;
+
+        }
+
+
+        if (tipo === 'prazo') {
+
+            const prazoA =
+                a.prazo;
+
+            const prazoB =
+                b.prazo;
+
+
+            const semA =
+                !prazoA ||
+                prazoA === '---';
+
+
+            const semB =
+                !prazoB ||
+                prazoB === '---';
+
+
+            if (semA && semB)
+                return 0;
+
+
+            if (semA)
+                return 1;
+
+
+            if (semB)
+                return -1;
+
+
+            return (
+                new Date(
+                    prazoA + 'T00:00:00'
+                ) -
+                new Date(
+                    prazoB + 'T00:00:00'
+                )
+            ) * direcaoOrdenacao;
+
+        }
+
+
+        return 0;
+
+    });
+
+
+    salvarBancoDeDados(db);
+
+    renderizarTabela();
+
+}
+
+
+function renderizarTabela() {
+
+    const tbody =
+        document.getElementById(
+            'corpo-tabela'
+        );
+
+
+    tbody.innerHTML = '';
+
+
+    if (!db.length) {
+
+        document.getElementById(
+            'estado-vazio'
+        ).style.display = 'block';
+
+
+        document.getElementById(
+            'conteudo-tabela'
+        ).style.display = 'none';
+
+
+        return;
+
+    }
+
+
+    document.getElementById(
+        'estado-vazio'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'conteudo-tabela'
+    ).style.display = 'block';
+
+
+    db.forEach((projeto, index) => {
+
+        const tr =
+            document.createElement('tr');
+
+
+        tr.id =
+            `linha-projeto-${index}`;
+
+
+        tr.onclick = e => {
+
+            if (
+                tr.classList.contains(
+                    'em-edicao'
+                )
+            ) {
+                return;
+            }
+
+
+            if (
+                !e.target.closest(
+                    '.col-acoes'
+                ) &&
+                !e.target.closest(
+                    'select'
+                ) &&
+                !e.target.closest(
+                    'input'
+                ) &&
+                !e.target.closest(
+                    'button'
+                )
+            ) {
+
+                location.href =
+                    `cards.html?id=${index}`;
+
+            }
+
+        };
+
+
+        const rotulo =
+            projeto.rotulo ||
+            'Em andamento';
+
+
+        const area =
+            projeto.area ||
+            'Projeto';
+
+
+        let prazo =
+            projeto.prazo ||
+            '---';
+
+
+        if (
+            prazo !== '---' &&
+            prazo.includes('-')
+        ) {
+
+            const p =
+                prazo.split('-');
+
+
+            if (p.length === 3) {
+
+                prazo =
+                    `${p[2]}/${p[1]}/${p[0]}`;
+
+            }
+
+        }
+
+
+        tr.innerHTML = `
+
+            <td>
+
+                <div class="col-nome">
+
+                    <span>
+                        📄
+                    </span>
+
+                    <span>
+                        ${escapeHTML(projeto.nome)}
+                    </span>
+
+                </div>
+
+            </td>
+
+
+            <td>
+
+                <span
+                    class="selo"
+                    style="background:${obterCorRotulo(rotulo)}"
+                >
+                    ${escapeHTML(rotulo)}
+                </span>
+
+            </td>
+
+
+            <td>
+
+                <span class="pilula-area">
+                    ${escapeHTML(area)}
+                </span>
+
+            </td>
+
+
+            <td>
+                ${prazo}
+            </td>
+
+
+            <td class="col-acoes">
+
+                <button
+                    class="btn-tabela-opcoes"
+                    onclick="alternarMenuTabela(event,${index})"
+                >
+                    ⋮
+                </button>
+
+
+                <div
+                    class="menu-tabela-flutuante"
+                    id="menu-tabela-${index}"
+                >
+
+                    <button
+                        onclick="ativarEdicaoCompleta(${index})"
+                    >
+                        Editar
+                    </button>
+
+
+                    <button
+                        onclick="deletarProjeto(${index})"
+                        style="color:#ff4d4d"
+                    >
+                        Deletar
+                    </button>
+
+                </div>
+
+            </td>
+
+        `;
+
+
+        tbody.appendChild(tr);
+
+    });
+
+}
+
+
+function escapeHTML(v) {
+
+    return String(v ?? '')
+        .replace(
+            /[&<>"']/g,
+            c => ({
+                '&':'&amp;',
+                '<':'&lt;',
+                '>':'&gt;',
+                '"':'&quot;',
+                "'":'&#039;'
+            }[c])
+        );
+
+}
+
+
+function alternarMenuTabela(
+    event,
+    index
+) {
+
+    event.stopPropagation();
+
+
+    document
+        .querySelectorAll(
+            '.menu-tabela-flutuante'
+        )
+        .forEach((m, i) => {
+
+            if (i !== index) {
+                m.style.display = 'none';
+            }
+
+        });
+
+
+    const menu =
+        document.getElementById(
+            `menu-tabela-${index}`
+        );
+
+
+    const abrir = menu.style.display !== 'block';
+    menu.style.display = abrir ? 'block' : 'none';
+    if (!abrir) return;
+
+    /* Menu "fixed": não é cortado pela rolagem/bordas da tabela. */
+    const caixa = event.currentTarget.getBoundingClientRect();
+    const altura = menu.offsetHeight;
+    const cabeAbaixo = caixa.bottom + 6 + altura <= window.innerHeight;
+    menu.style.position = 'fixed';
+    menu.style.left = 'auto';
+    menu.style.right = (window.innerWidth - caixa.right) + 'px';
+    menu.style.top = (cabeAbaixo ? caixa.bottom + 6 : Math.max(8, caixa.top - 6 - altura)) + 'px';
+
+}
+
+
+window.addEventListener('scroll', () =>
+    document.querySelectorAll('.menu-tabela-flutuante')
+        .forEach(m => m.style.display = 'none'), true);
+window.onclick = () =>
+    document
+        .querySelectorAll(
+            '.menu-tabela-flutuante'
+        )
+        .forEach(
+            m => m.style.display = 'none'
+        );
+
+
+function abrirModal() {
+
+    document.getElementById(
+        'modalNovaPagina'
+    ).style.display = 'flex';
+
+
+    setTimeout(
+        () =>
+            document
+                .getElementById(
+                    'nomePagina'
+                )
+                .focus(),
+        50
+    );
+
+}
+
+
+function fecharModal() {
+
+    document.getElementById(
+        'modalNovaPagina'
+    ).style.display = 'none';
+
+}
+
+
+function salvarNovoProjeto() {
+
+    const nome =
+        document
+            .getElementById(
+                'nomePagina'
+            )
+            .value
+            .trim();
+
+
+    if (!nome)
+        return;
+
+
+    const area =
+        document.querySelector(
+            'input[name="tipoPagina"]:checked'
+        ).value;
+
+
+    db.push({
+
+        nome,
+
+        rotulo:
+            opcoesRotulos[0]?.nome ||
+            'Em andamento',
+
+        area,
+
+        prazo:'---',
+
+        cards:[]
+
+    });
+
+
+    salvarBancoDeDados(db);
+
+
+    location.href =
+        `cards.html?id=${db.length - 1}`;
+
+}
+
+
+document
+    .getElementById('nomePagina')
+    .addEventListener(
+        'keydown',
+        e => {
+
+            if (e.key === 'Enter')
+                salvarNovoProjeto();
+
+
+            if (e.key === 'Escape')
+                fecharModal();
+
+        }
+    );
+
+
+function ativarEdicaoCompleta(index) {
+
+    const p =
+        db[index];
+
+
+    const tr =
+        document.getElementById(
+            `linha-projeto-${index}`
+        );
+
+
+    tr.classList.add(
+        'em-edicao'
+    );
+
+
+    document
+        .getElementById(
+            `nome-container-${index}`
+        )
+        ?.remove();
+
+
+    tr.innerHTML = `
+
+        <td>
+
+            <input
+                id="edit-nome-${index}"
+                class="input-inline-tabela"
+                value="${escapeHTML(p.nome)}"
+            >
+
+        </td>
+
+
+        <td>
+
+            <select
+                id="edit-rotulo-${index}"
+                class="select-inline-tabela"
+            >
+
+                ${opcoesRotulos
+                    .map(
+                        r =>
+                            `<option
+                                ${r.nome === p.rotulo ? 'selected' : ''}
+                            >
+                                ${escapeHTML(r.nome)}
+                            </option>`
+                    )
+                    .join('')
+                }
+
+            </select>
+
+        </td>
+
+
+        <td>
+
+            <select
+                id="edit-area-${index}"
+                class="select-inline-tabela"
+            >
+
+                ${opcoesArea
+                    .map(
+                        a =>
+                            `<option
+                                ${a === p.area ? 'selected' : ''}
+                            >
+                                ${escapeHTML(a)}
+                            </option>`
+                    )
+                    .join('')
+                }
+
+            </select>
+
+        </td>
+
+
+        <td>
+
+            <input
+                type="date"
+                id="edit-prazo-${index}"
+                class="input-inline-tabela"
+                value="${
+                    p.prazo &&
+                    p.prazo !== '---'
+                        ? p.prazo
+                        : ''
+                }"
+            >
+
+        </td>
+
+
+        <td class="col-acoes">
+
+            <button
+                class="btn-salvar-inline"
+                onclick="salvarEdicaoCompleta(${index})"
+            >
+                Salvar
+            </button>
+
+        </td>
+
+    `;
+
+}
+
+
+function salvarEdicaoCompleta(index) {
+
+    const nome =
+        document
+            .getElementById(
+                `edit-nome-${index}`
+            )
+            .value
+            .trim();
+
+
+    if (!nome) {
+
+        alert(
+            'O nome do projeto não pode ser vazio.'
+        );
+
+        return;
+
+    }
+
+
+    db[index].nome =
+        nome;
+
+
+    db[index].rotulo =
+        document
+            .getElementById(
+                `edit-rotulo-${index}`
+            )
+            .value;
+
+
+    db[index].area =
+        document
+            .getElementById(
+                `edit-area-${index}`
+            )
+            .value;
+
+
+    db[index].prazo =
+        document
+            .getElementById(
+                `edit-prazo-${index}`
+            )
+            .value ||
+        '---';
+
+
+    salvarBancoDeDados(db);
+
+    renderizarTabela();
+
+}
+
+
+function deletarProjeto(index) {
+
+    if (
+        confirm(
+            `Tem certeza que deseja deletar o projeto "${db[index].nome}"?`
+        )
+    ) {
+
+        db.splice(
+            index,
+            1
+        );
+
+
+        salvarBancoDeDados(db);
+
+        renderizarTabela();
+
+    }
+
+}
+
+
+function aplicarBusca() {
+    const termo = window.__termoBusca || '';
+    document.querySelectorAll('#corpo-tabela tr').forEach(tr => {
+        tr.style.display = !termo || tr.textContent.toLowerCase().includes(termo) ? '' : 'none';
+    });
+}
+window.aoBuscar = t => { window.__termoBusca = t; aplicarBusca(); };
+window.aoNovoRegistro = abrirModal;
+const _renderizarTabelaBase = renderizarTabela;
+renderizarTabela = function () { _renderizarTabelaBase(); aplicarBusca(); };
+
+renderizarTabela();
+
+</script>
+<script>
+BAHUB_PRONTO.then(() => {
+    const s = document.createElement('script');
+    s.textContent = document.getElementById('app-script').textContent;
+    document.body.appendChild(s);
+});
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>BAHUB - Timeline do Projeto</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <header class="topo" id="topo" data-atual=""></header>
+<script src="js/header.js"></script>
+<div class="cabecalho-pagina">
+        <a href="index.html" class="btn-voltar">‹</a>
+
+        <h1 class="titulo-projeto" id="header-titulo">A carregar...</h1>
+
+        <span class="selo selo-andamento" id="header-status">Em andamento</span>
+    </div>
+
+    <div class="timeline-container">
+
+        <!-- Formulário Novo Card -->
+        <div class="form-novo-card">
+
+            <select class="seletor-tipo" id="inputTipoCard">
+                <option value="Atualização">Atualização</option>
+                <option value="Tarefa">Tarefa</option>
+                <option value="Reunião">Reunião</option>
+                <option value="Decisão">Decisão</option>
+            </select>
+
+            <input
+                type="text"
+                class="input-titulo-card"
+                id="inputTituloCard"
+                placeholder="Novo card"
+            >
+
+            <textarea
+                class="input-legenda-card"
+                id="inputLegendaCard"
+                placeholder="Escreva a legenda ou cole uma imagem/vídeo aqui (Ctrl+V)..."
+                rows="3"
+            ></textarea>
+
+            <div id="container-preview-novo"></div>
+
+            <div style="margin-top: 10px;">
+                <label class="label-file" for="inputMidiaCard">
+                    📁 Inserir Imagem/Vídeo
+                </label>
+
+                <input
+                    type="file"
+                    id="inputMidiaCard"
+                    class="input-file-culto"
+                    accept="image/*,video/*"
+                >
+            </div>
+
+            <button
+                class="btn-enviar-card"
+                id="btnEnviarCard"
+                type="button"
+                onclick="adicionarCard()"
+            >
+                Publicar card ↵
+            </button>
+
+        </div>
+
+        <!-- Feed -->
+        <div id="feed-timeline"></div>
+
+    </div>
+
+    <footer class="footer-bahub">
+    <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
+    <span id="status-nuvem" style="color:#34d399;font-weight:500"></span>
+    <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/db.js"></script>
+<script type="text/plain" id="app-script">
+        /* =========================================================
+           CONFIGURAÇÃO DO PROJETO
+        ========================================================= */
+
+        const parametrosDaURL =
+            new URLSearchParams(window.location.search);
+
+        const projetoId =
+            parametrosDaURL.get('id');
+
+        let db =
+            lerBancoDeDados();
+
+        let projetoAtual =
+            db[projetoId];
+
+        if (!projetoAtual) {
+            window.location.href = 'index.html';
+        }
+
+        let midiaTemporariaNovo = {
+            blob: null,
+            tipo: null,
+            urlPreview: null
+        };
+
+
+        /* =========================================================
+           RENDERIZAR TIMELINE
+        ========================================================= */
+
+        async function renderizarTimeline() {
+
+            document.getElementById('header-titulo').innerText =
+                projetoAtual.nome;
+
+            const statusHeader =
+                document.getElementById('header-status');
+
+            const rotuloHeader =
+                projetoAtual.status ||
+                projetoAtual.rotulo ||
+                'Em andamento';
+
+            statusHeader.innerText = rotuloHeader;
+
+            /*
+             * Usa exatamente a mesma cor do rótulo
+             * utilizado na tabela/menu do BAHUB.
+             */
+            const opcoesRotulos =
+                JSON.parse(
+                    localStorage.getItem('bahub_opcoes_rotulos')
+                ) || [
+                    { nome: 'Em andamento', cor: 'blue' },
+                    { nome: 'Pronto', cor: 'green' },
+            { nome: 'Esperando', cor: 'purple' },
+                    { nome: 'Atrasado', cor: 'red' },
+                    { nome: 'A ser feito', cor: 'gray' }
+                ];
+
+            const rotuloEncontrado =
+                opcoesRotulos.find(
+                    item => item.nome === rotuloHeader
+                );
+
+            const MAPA_CORES = {blue:'#183cf5',green:'#059669',red:'#dc2626',gray:'#4b5563',purple:'#9333ea'};
+            const corBruta = rotuloEncontrado ? rotuloEncontrado.cor : 'blue';
+            statusHeader.style.backgroundColor = MAPA_CORES[corBruta] || corBruta;
+
+            const feed =
+                document.getElementById('feed-timeline');
+
+            feed.innerHTML = '';
+
+            if (!projetoAtual.cards) {
+                projetoAtual.cards = [];
+            }
+
+            [...projetoAtual.cards]
+                .reverse()
+                .forEach((card, indexRealInvertido) => {
+
+                    const indexReal =
+                        projetoAtual.cards.length -
+                        1 -
+                        indexRealInvertido;
+
+                    const dataExibicao =
+                        card.data ||
+                        'Data não registada';
+
+                    const itemDiv =
+                        document.createElement('div');
+
+                    itemDiv.className =
+                        'timeline-item';
+
+                    itemDiv.innerHTML = `
+                        <span class="timeline-date">
+                            ${card.data || 'Data não registada'}
+                        </span>
+
+                        <div
+                            class="timeline-card"
+                            id="card-box-${indexReal}"
+                        >
+
+                            <button
+                                class="btn-card-opcoes"
+                                id="btn-opcoes-${indexReal}"
+                                onclick="alternarMenuCard(event, ${indexReal})"
+                                type="button"
+                            >
+                                ⋮
+                            </button>
+
+                            <div
+                                class="menu-card-flutuante"
+                                id="menu-card-${indexReal}"
+                            >
+                                <button
+                                    onclick="ativarEdicaoCard(${indexReal})"
+                                    type="button"
+                                >
+                                    Editar
+                                </button>
+
+                                <button
+                                    onclick="deletarCard(${indexReal})"
+                                    style="color: #ff4d4d;"
+                                    type="button"
+                                >
+                                    Deletar
+                                </button>
+                            </div>
+
+                            <div
+                                id="card-conteudo-${indexReal}"
+                                ondblclick="ativarEdicaoCard(${indexReal})"
+                                style="cursor: pointer;"
+                                title="Duplo clique para editar"
+                            >
+                                <span class="card-tipo-tag">
+                                    ${card.tipo || 'Atualização'}
+                                </span>
+
+                                <h3>${card.titulo || ''}</h3>
+
+                                <p>${card.legenda || ''}</p>
+
+                                <div
+                                    class="card-midia-container"
+                                    id="midia-card-${indexReal}"
+                                ></div>
+                            </div>
+
+                        </div>
+                    `;
+
+                    feed.appendChild(itemDiv);
+
+                    carregarMidiaDoCard(card, indexReal);
+                });
+        }
+
+
+        /* =========================================================
+           CARREGAR MÍDIA DO CARD
+        ========================================================= */
+
+        async function carregarMidiaDoCard(card, index) {
+
+            const container =
+                document.getElementById(
+                    `midia-card-${index}`
+                );
+
+            if (!container) return;
+
+            /*
+             * Cards antigos podem ainda possuir:
+             * card.midia = "data:image/..."
+             *
+             * Mantemos compatibilidade com eles.
+             */
+            if (card.midia) {
+
+                if (
+                    card.tipoMidia &&
+                    card.tipoMidia.startsWith('video')
+                ) {
+
+                    container.innerHTML = `
+                        <video
+                            controls
+                            src="${card.midia}"
+                        ></video>
+                    `;
+
+                } else {
+
+                    container.innerHTML = `
+                        <img
+                            src="${card.midia}"
+                            alt="Anexo"
+                        >
+                    `;
+                }
+
+                return;
+            }
+
+            /*
+             * Cards novos usam IndexedDB.
+             */
+            if (!card.midiaId) return;
+
+            try {
+
+                const registro =
+                    await obterMidiaBlob(card.midiaId);
+
+                if (!registro || !registro.blob) return;
+
+                const url =
+                    URL.createObjectURL(registro.blob);
+
+                if (
+                    registro.tipo &&
+                    registro.tipo.startsWith('video')
+                ) {
+
+                    container.innerHTML = `
+                        <video
+                            controls
+                            src="${url}"
+                        ></video>
+                    `;
+
+                } else {
+
+                    container.innerHTML = `
+                        <img
+                            src="${url}"
+                            alt="Anexo"
+                        >
+                    `;
+                }
+
+            } catch (erro) {
+
+                console.error(
+                    'Erro ao carregar mídia:',
+                    erro
+                );
+            }
+        }
+
+
+        /* =========================================================
+           CAPTURAR COLAGEM
+        ========================================================= */
+
+        function capturarCole(event) {
+
+            const clipboard =
+                event.clipboardData ||
+                window.clipboardData;
+
+            if (!clipboard || !clipboard.items) return;
+
+            const items =
+                clipboard.items;
+
+            for (const item of items) {
+
+                if (
+                    item.type.indexOf('image') === 0 ||
+                    item.type.indexOf('video') === 0
+                ) {
+
+                    event.preventDefault();
+
+                    const blob =
+                        item.getAsFile();
+
+                    if (!blob) return;
+
+                    prepararMidiaNovo(blob);
+
+                    return;
+                }
+            }
+        }
+
+
+        /* =========================================================
+           ARQUIVO TRADICIONAL
+        ========================================================= */
+
+        function carregarArquivoTradicional(input) {
+
+            if (
+                input.files &&
+                input.files[0]
+            ) {
+
+                prepararMidiaNovo(
+                    input.files[0]
+                );
+            }
+        }
+
+
+        /* =========================================================
+           PREPARAR MÍDIA
+        ========================================================= */
+
+        function prepararMidiaNovo(blob) {
+
+            removerUrlPreviewNovo();
+
+            midiaTemporariaNovo = {
+                blob: blob,
+                tipo: blob.type,
+                urlPreview: URL.createObjectURL(blob)
+            };
+
+            atualizarPreviewNovo();
+        }
+
+
+        function removerUrlPreviewNovo() {
+
+            if (
+                midiaTemporariaNovo &&
+                midiaTemporariaNovo.urlPreview
+            ) {
+
+                URL.revokeObjectURL(
+                    midiaTemporariaNovo.urlPreview
+                );
+            }
+        }
+
+
+        /* =========================================================
+           PREVIEW NOVO CARD
+        ========================================================= */
+
+        function atualizarPreviewNovo() {
+
+            const container =
+                document.getElementById(
+                    'container-preview-novo'
+                );
+
+            if (
+                !midiaTemporariaNovo ||
+                !midiaTemporariaNovo.blob
+            ) {
+
+                container.innerHTML = '';
+
+                return;
+            }
+
+            const url =
+                midiaTemporariaNovo.urlPreview;
+
+            if (
+                midiaTemporariaNovo.tipo &&
+                midiaTemporariaNovo.tipo.startsWith('video')
+            ) {
+
+                container.innerHTML = `
+                    <div class="preview-midia-wrapper">
+
+                        <video
+                            src="${url}"
+                            controls
+                        ></video>
+
+                        <button
+                            class="btn-remover-preview"
+                            onclick="removerMidiaNovo()"
+                            title="Remover mídia"
+                            type="button"
+                        >
+                            ×
+                        </button>
+
+                    </div>
+                `;
+
+            } else {
+
+                container.innerHTML = `
+                    <div class="preview-midia-wrapper">
+
+                        <img
+                            src="${url}"
+                            alt="Preview"
+                        >
+
+                        <button
+                            class="btn-remover-preview"
+                            onclick="removerMidiaNovo()"
+                            title="Remover mídia"
+                            type="button"
+                        >
+                            ×
+                        </button>
+
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           REMOVER MÍDIA NOVO CARD
+        ========================================================= */
+
+        function removerMidiaNovo() {
+
+            removerUrlPreviewNovo();
+
+            midiaTemporariaNovo = {
+                blob: null,
+                tipo: null,
+                urlPreview: null
+            };
+
+            const input =
+                document.getElementById(
+                    'inputMidiaCard'
+                );
+
+            if (input) {
+                input.value = '';
+            }
+
+            atualizarPreviewNovo();
+        }
+
+
+        /* =========================================================
+           ENVIAR NOVO CARD
+        ========================================================= */
+
+        async function adicionarCard() {
+
+            const titulo =
+                document.getElementById(
+                    'inputTituloCard'
+                ).value.trim();
+
+            const legenda =
+                document.getElementById(
+                    'inputLegendaCard'
+                ).value;
+
+            const tipo =
+                document.getElementById(
+                    'inputTipoCard'
+                ).value;
+
+            const botao =
+                document.getElementById(
+                    'btnEnviarCard'
+                );
+
+            if (!titulo) {
+
+                alert(
+                    'O card precisa de um título.'
+                );
+
+                document.getElementById(
+                    'inputTituloCard'
+                ).focus();
+
+                return;
+            }
+
+            botao.disabled = true;
+            botao.textContent = '...';
+
+            try {
+
+                let midiaId = null;
+
+                /*
+                 * AQUI ESTÁ A CORREÇÃO:
+                 * a imagem/vídeo vai para IndexedDB,
+                 * e não para localStorage.
+                 */
+                if (
+                    midiaTemporariaNovo &&
+                    midiaTemporariaNovo.blob
+                ) {
+
+                    midiaId =
+                        await salvarMidiaBlob(
+                            midiaTemporariaNovo.blob,
+                            midiaTemporariaNovo.tipo
+                        );
+                }
+
+                const agora =
+                    new Date();
+
+                const dataString =
+                    `${agora.toLocaleDateString('pt-BR')} às ${
+                        agora.toLocaleTimeString(
+                            'pt-BR',
+                            {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            }
+                        )
+                    }`;
+
+                const novoCard = {
+
+                    tipo: tipo,
+
+                    titulo: titulo,
+
+                    legenda:
+                        legenda.replace(
+                            /\n/g,
+                            '<br>'
+                        ),
+
+                    data: dataString,
+
+                    /*
+                     * Mantido como null para os cards novos.
+                     * A mídia fica em IndexedDB.
+                     */
+                    midia: null,
+
+                    tipoMidia:
+                        midiaTemporariaNovo.tipo ||
+                        null,
+
+                    midiaId: midiaId
+                };
+
+                projetoAtual.cards.push(
+                    novoCard
+                );
+
+                db[projetoId] =
+                    projetoAtual;
+
+                salvarBancoDeDados(db);
+
+                limparFormularioNovoCard();
+
+                await renderizarTimeline();
+
+            } catch (erro) {
+
+                console.error(
+                    'Erro ao criar card:',
+                    erro
+                );
+
+                alert(
+                    'Não foi possível criar o card.\n\n' +
+                    'Erro: ' +
+                    (erro.message || erro)
+                );
+
+            } finally {
+
+                botao.disabled = false;
+                botao.textContent = 'Publicar card ↵';
+            }
+        }
+
+
+        /* =========================================================
+           LIMPAR FORMULÁRIO
+        ========================================================= */
+
+        function limparFormularioNovoCard() {
+
+            document.getElementById(
+                'inputTituloCard'
+            ).value = '';
+
+            document.getElementById(
+                'inputLegendaCard'
+            ).value = '';
+
+            removerMidiaNovo();
+
+            document.getElementById(
+                'inputTituloCard'
+            ).focus();
+        }
+
+
+        /* =========================================================
+           ENTER PARA ENVIAR
+           SHIFT + ENTER = NOVA LINHA
+        ========================================================= */
+
+        document.addEventListener(
+            'keydown',
+            function(event) {
+
+                const campo =
+                    event.target;
+
+                if (
+                    (
+                        campo.id === 'inputTituloCard' ||
+                        campo.id === 'inputLegendaCard'
+                    ) &&
+                    event.key === 'Enter' &&
+                    !event.shiftKey
+                ) {
+
+                    event.preventDefault();
+
+                    adicionarCard();
+
+                    return;
+                }
+
+                if (
+                    (
+                        campo.id.startsWith('edit-titulo-') ||
+                        campo.id.startsWith('edit-legenda-')
+                    ) &&
+                    event.key === 'Enter' &&
+                    !event.shiftKey
+                ) {
+
+                    event.preventDefault();
+
+                    const index =
+                        parseInt(
+                            campo.id.split('-').pop(),
+                            10
+                        );
+
+                    salvarEdicaoCard(index);
+                }
+            }
+        );
+
+
+        /* =========================================================
+           MENU DO CARD
+        ========================================================= */
+
+        function alternarMenuCard(event, index) {
+
+            event.stopPropagation();
+
+            document
+                .querySelectorAll(
+                    '.menu-card-flutuante'
+                )
+                .forEach((menu, idx) => {
+
+                    if (idx !== index) {
+                        menu.style.display = 'none';
+                    }
+                });
+
+            const menu =
+                document.getElementById(
+                    `menu-card-${index}`
+                );
+
+            menu.style.display =
+                menu.style.display === 'block'
+                    ? 'none'
+                    : 'block';
+        }
+
+
+        window.onclick = function() {
+
+            document
+                .querySelectorAll(
+                    '.menu-card-flutuante'
+                )
+                .forEach(menu => {
+
+                    menu.style.display = 'none';
+
+                });
+        };
+
+
+        /* =========================================================
+           DELETAR CARD
+        ========================================================= */
+
+        async function deletarCard(index) {
+
+            if (
+                !confirm(
+                    'Tem certeza que deseja apagar este card?'
+                )
+            ) {
+                return;
+            }
+
+            const card =
+                projetoAtual.cards[index];
+
+            /*
+             * Apaga a mídia correspondente
+             * do IndexedDB antes de remover o card.
+             */
+            if (card && card.midiaId) {
+
+                try {
+                    await deletarMidiaBlob(
+                        card.midiaId
+                    );
+                } catch (erro) {
+                    console.error(
+                        'Erro ao apagar mídia:',
+                        erro
+                    );
+                }
+            }
+
+            projetoAtual.cards.splice(
+                index,
+                1
+            );
+
+            db[projetoId] =
+                projetoAtual;
+
+            salvarBancoDeDados(db);
+
+            await renderizarTimeline();
+        }
+
+
+        /* =========================================================
+           EDIÇÃO DO CARD
+        ========================================================= */
+
+        async function ativarEdicaoCard(index) {
+
+            const btnOpcoes =
+                document.getElementById(
+                    `btn-opcoes-${index}`
+                );
+
+            if (btnOpcoes) {
+                btnOpcoes.style.display = 'none';
+            }
+
+            const menu =
+                document.getElementById(
+                    `menu-card-${index}`
+                );
+
+            if (menu) {
+                menu.style.display = 'none';
+            }
+
+            const card =
+                projetoAtual.cards[index];
+
+            const containerConteudo =
+                document.getElementById(
+                    `card-conteudo-${index}`
+                );
+
+            if (!containerConteudo) return;
+
+            const legendaPura =
+                card.legenda
+                    ? card.legenda.replace(
+                        /<br\s*[\/]?>/gi,
+                        '\n'
+                    )
+                    : '';
+
+            window[
+                `midiaTemporariaEdicao_${index}`
+            ] = {
+                blob: null,
+                tipo: card.tipoMidia || null,
+                midiaId: card.midiaId || null,
+                urlPreview: null,
+                removida: false
+            };
+
+            let previewInicialHTML = '';
+
+            /*
+             * Card antigo com Base64.
+             */
+            if (card.midia) {
+
+                const tag =
+                    card.tipoMidia &&
+                    card.tipoMidia.startsWith('video')
+                        ? 'video'
+                        : 'img';
+
+                previewInicialHTML = `
+                    <div class="preview-midia-wrapper">
+
+                        <${tag}
+                            src="${card.midia}"
+                            ${tag === 'video' ? 'controls' : ''}
+                        ></${tag}>
+
+                        <button
+                            class="btn-remover-preview"
+                            onclick="removerMidiaEdicao(${index})"
+                            title="Remover mídia"
+                            type="button"
+                        >
+                            ×
+                        </button>
+
+                    </div>
+                `;
+            }
+
+            /*
+             * Card novo com IndexedDB.
+             */
+            else if (card.midiaId) {
+
+                const registro =
+                    await obterMidiaBlob(
+                        card.midiaId
+                    );
+
+                if (
+                    registro &&
+                    registro.blob
+                ) {
+
+                    const url =
+                        URL.createObjectURL(
+                            registro.blob
+                        );
+
+                    window[
+                        `midiaTemporariaEdicao_${index}`
+                    ].blob =
+                        registro.blob;
+
+                    window[
+                        `midiaTemporariaEdicao_${index}`
+                    ].urlPreview =
+                        url;
+
+                    const tag =
+                        registro.tipo &&
+                        registro.tipo.startsWith('video')
+                            ? 'video'
+                            : 'img';
+
+                    previewInicialHTML = `
+                        <div class="preview-midia-wrapper">
+
+                            <${tag}
+                                src="${url}"
+                                ${tag === 'video' ? 'controls' : ''}
+                            ></${tag}>
+
+                            <button
+                                class="btn-remover-preview"
+                                onclick="removerMidiaEdicao(${index})"
+                                title="Remover mídia"
+                                type="button"
+                            >
+                                ×
+                            </button>
+
+                        </div>
+                    `;
+                }
+            }
+
+            containerConteudo.style.cursor = 'default';
+            containerConteudo.removeAttribute('ondblclick');
+            containerConteudo.removeAttribute('title');
+
+            containerConteudo.innerHTML = `
+
+                <select
+                    id="edit-tipo-${index}"
+                    class="seletor-tipo"
+                    style="margin-bottom: 10px;"
+                >
+                    <option value="Atualização" ${card.tipo === 'Atualização' ? 'selected' : ''}>Atualização</option>
+                    <option value="Tarefa" ${card.tipo === 'Tarefa' ? 'selected' : ''}>Tarefa</option>
+                    <option value="Reunião" ${card.tipo === 'Reunião' ? 'selected' : ''}>Reunião</option>
+                    <option value="Decisão" ${card.tipo === 'Decisão' ? 'selected' : ''}>Decisão</option>
+                </select>
+
+                <input
+                    type="text"
+                    id="edit-titulo-${index}"
+                    class="input-titulo-card"
+                    value="${card.titulo || ''}"
+                    placeholder="Título do card"
+                >
+
+                <textarea
+                    id="edit-legenda-${index}"
+                    class="input-legenda-card"
+                    rows="3"
+                    placeholder="Escreva a legenda ou cole uma imagem/vídeo aqui (Ctrl+V)..."
+                    onpaste="capturarColeEdicao(event, ${index})"
+                >${legendaPura}</textarea>
+
+                <div id="container-preview-edicao-${index}">
+                    ${previewInicialHTML}
+                </div>
+
+                <div style="margin-top: 10px;">
+
+                    <label
+                        class="label-file"
+                        for="edit-novo-arquivo-${index}"
+                    >
+                        📁 Inserir Imagem/Vídeo
+                    </label>
+
+                    <input
+                        type="file"
+                        id="edit-novo-arquivo-${index}"
+                        class="input-file-culto"
+                        accept="image/*,video/*"
+                        onchange="carregarArquivoEdicao(this, ${index})"
+                    >
+
+                    <button
+                        class="btn-cancelar-edicao"
+                        onclick="cancelarEdicaoCard(${index})"
+                        type="button"
+                    >
+                        Cancelar edição
+                    </button>
+
+                </div>
+
+                <button
+                    class="btn-enviar-card"
+                    onclick="salvarEdicaoCard(${index})"
+                    type="button"
+                    title="Salvar alterações"
+                >
+                    Salvar ↵
+                </button>
+            `;
+
+            const campoTitulo =
+                document.getElementById(
+                    `edit-titulo-${index}`
+                );
+
+            if (campoTitulo) {
+                campoTitulo.focus();
+                campoTitulo.select();
+            }
+        }
+
+
+        /* =========================================================
+           CANCELAR EDIÇÃO
+        ========================================================= */
+
+        function cancelarEdicaoCard(index) {
+
+            const dados =
+                window[
+                    `midiaTemporariaEdicao_${index}`
+                ];
+
+            if (
+                dados &&
+                dados.urlPreview
+            ) {
+                URL.revokeObjectURL(
+                    dados.urlPreview
+                );
+            }
+
+            delete window[
+                `midiaTemporariaEdicao_${index}`
+            ];
+
+            renderizarTimeline();
+        }
+
+
+        /* =========================================================
+           COLAR MÍDIA NA EDIÇÃO
+        ========================================================= */
+
+        function capturarColeEdicao(event, index) {
+
+            const clipboard =
+                event.clipboardData ||
+                window.clipboardData;
+
+            if (!clipboard || !clipboard.items) return;
+
+            for (const item of clipboard.items) {
+
+                if (
+                    item.type.indexOf('image') === 0 ||
+                    item.type.indexOf('video') === 0
+                ) {
+
+                    event.preventDefault();
+
+                    const blob =
+                        item.getAsFile();
+
+                    if (!blob) return;
+
+                    prepararMidiaEdicao(
+                        index,
+                        blob
+                    );
+
+                    return;
+                }
+            }
+        }
+
+
+        /* =========================================================
+           ARQUIVO NA EDIÇÃO
+        ========================================================= */
+
+        function carregarArquivoEdicao(
+            input,
+            index
+        ) {
+
+            if (
+                input.files &&
+                input.files[0]
+            ) {
+
+                prepararMidiaEdicao(
+                    index,
+                    input.files[0]
+                );
+            }
+        }
+
+
+        async function prepararMidiaEdicao(
+            index,
+            blob
+        ) {
+
+            const anterior =
+                window[
+                    `midiaTemporariaEdicao_${index}`
+                ];
+
+            if (
+                anterior &&
+                anterior.urlPreview
+            ) {
+
+                URL.revokeObjectURL(
+                    anterior.urlPreview
+                );
+            }
+
+            window[
+                `midiaTemporariaEdicao_${index}`
+            ] = {
+
+                blob: blob,
+
+                tipo: blob.type,
+
+                midiaId:
+                    anterior
+                        ? anterior.midiaId
+                        : null,
+
+                urlPreview:
+                    URL.createObjectURL(blob),
+
+                removida: false
+            };
+
+            atualizarPreviewEdicao(index);
+        }
+
+
+        /* =========================================================
+           PREVIEW DA EDIÇÃO
+        ========================================================= */
+
+        function atualizarPreviewEdicao(index) {
+
+            const container =
+                document.getElementById(
+                    `container-preview-edicao-${index}`
+                );
+
+            const dados =
+                window[
+                    `midiaTemporariaEdicao_${index}`
+                ];
+
+            if (
+                !container ||
+                !dados ||
+                !dados.blob
+            ) {
+
+                if (container) {
+                    container.innerHTML = '';
+                }
+
+                return;
+            }
+
+            const tag =
+                dados.tipo &&
+                dados.tipo.startsWith('video')
+                    ? 'video'
+                    : 'img';
+
+            container.innerHTML = `
+
+                <div class="preview-midia-wrapper">
+
+                    <${tag}
+                        src="${dados.urlPreview}"
+                        ${tag === 'video' ? 'controls' : ''}
+                    ></${tag}>
+
+                    <button
+                        class="btn-remover-preview"
+                        onclick="removerMidiaEdicao(${index})"
+                        title="Remover mídia"
+                        type="button"
+                    >
+                        ×
+                    </button>
+
+                </div>
+            `;
+        }
+
+
+        /* =========================================================
+           REMOVER MÍDIA DA EDIÇÃO
+        ========================================================= */
+
+        function removerMidiaEdicao(index) {
+
+            const dados =
+                window[
+                    `midiaTemporariaEdicao_${index}`
+                ];
+
+            if (
+                dados &&
+                dados.urlPreview
+            ) {
+
+                URL.revokeObjectURL(
+                    dados.urlPreview
+                );
+            }
+
+            window[
+                `midiaTemporariaEdicao_${index}`
+            ] = {
+
+                blob: null,
+
+                tipo: null,
+
+                midiaId:
+                    dados
+                        ? dados.midiaId
+                        : null,
+
+                urlPreview: null,
+
+                removida: true
+            };
+
+            const input =
+                document.getElementById(
+                    `edit-novo-arquivo-${index}`
+                );
+
+            if (input) {
+                input.value = '';
+            }
+
+            atualizarPreviewEdicao(index);
+        }
+
+
+        /* =========================================================
+           SALVAR EDIÇÃO
+        ========================================================= */
+
+        async function salvarEdicaoCard(index) {
+
+            const novoTipo =
+                document.getElementById(
+                    `edit-tipo-${index}`
+                ).value;
+
+            const novoTitulo =
+                document.getElementById(
+                    `edit-titulo-${index}`
+                ).value.trim();
+
+            const novaLegenda =
+                document.getElementById(
+                    `edit-legenda-${index}`
+                ).value;
+
+            if (!novoTitulo) {
+
+                alert(
+                    'O título não pode ficar vazio.'
+                );
+
+                return;
+            }
+
+            const dadosMidia =
+                window[
+                    `midiaTemporariaEdicao_${index}`
+                ] || {
+                    blob: null,
+                    tipo: null,
+                    midiaId: null,
+                    removida: false
+                };
+
+            const card =
+                projetoAtual.cards[index];
+
+            try {
+
+                /*
+                 * Se uma nova mídia foi selecionada,
+                 * salva primeiro a nova no IndexedDB.
+                 */
+                if (
+                    dadosMidia.blob
+                ) {
+
+                    const novaMidiaId =
+                        await salvarMidiaBlob(
+                            dadosMidia.blob,
+                            dadosMidia.tipo
+                        );
+
+                    /*
+                     * Apaga a mídia antiga.
+                     */
+                    if (
+                        card.midiaId &&
+                        card.midiaId !== novaMidiaId
+                    ) {
+
+                        await deletarMidiaBlob(
+                            card.midiaId
+                        );
+                    }
+
+                    card.midia =
+                        null;
+
+                    card.midiaId =
+                        novaMidiaId;
+
+                    card.tipoMidia =
+                        dadosMidia.tipo;
+                }
+
+                /*
+                 * Se o usuário removeu a mídia.
+                 */
+                else if (
+                    dadosMidia.removida
+                ) {
+
+                    if (card.midiaId) {
+
+                        await deletarMidiaBlob(
+                            card.midiaId
+                        );
+                    }
+
+                    card.midia =
+                        null;
+
+                    card.midiaId =
+                        null;
+
+                    card.tipoMidia =
+                        null;
+                }
+
+                card.tipo =
+                    novoTipo;
+
+                card.titulo =
+                    novoTitulo;
+
+                card.legenda =
+                    novaLegenda.replace(
+                        /\n/g,
+                        '<br>'
+                    );
+
+                db[projetoId] =
+                    projetoAtual;
+
+                salvarBancoDeDados(db);
+
+                await renderizarTimeline();
+
+            } catch (erro) {
+
+                console.error(
+                    'Erro ao salvar edição:',
+                    erro
+                );
+
+                alert(
+                    'Não foi possível salvar as alterações.\n\n' +
+                    'Erro: ' +
+                    (erro.message || erro)
+                );
+            }
+        }
+
+
+        /* =========================================================
+           INICIALIZAÇÃO
+        ========================================================= */
+
+        function aplicarBuscaCards() {
+    const termo = window.__termoBusca || '';
+    document.querySelectorAll('#feed-timeline .timeline-item').forEach(item => {
+        item.style.display = !termo || item.textContent.toLowerCase().includes(termo) ? '' : 'none';
+    });
+}
+window.aoBuscar = t => { window.__termoBusca = t; aplicarBuscaCards(); };
+window.aoNovoRegistro = () => {
+    const campo = document.getElementById('inputTituloCard');
+    campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    campo.focus();
+};
+const _renderizarTimelineBase = renderizarTimeline;
+renderizarTimeline = async function () {
+    await _renderizarTimelineBase();
+    if (window.BAHUB_Topo) BAHUB_Topo.definirAtual(projetoAtual.nome);
+    aplicarBuscaCards();
+};
+
+(async function() {
+
+            try {
+                await abrirBancoMidia();
+            } catch (erro) {
+                console.error(
+                    'IndexedDB não pôde ser inicializado:',
+                    erro
+                );
+            }
+
+            renderizarTimeline();
+        })();
+
+    </script>
+<script>
+BAHUB_PRONTO.then(() => {
+    const s = document.createElement('script');
+    s.textContent = document.getElementById('app-script').textContent;
+    document.body.appendChild(s);
+});
+</script>
+</body>
+</html>
