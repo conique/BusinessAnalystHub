@@ -1,1 +1,1 @@
-# -BusinessAnalystHub
+# BusinessAnalystHub
