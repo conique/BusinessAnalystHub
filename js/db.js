@@ -53,29 +53,86 @@ async function enviar() {
 function telaLogin() {
     return new Promise(res => {
         const o = document.createElement('div');
-        o.className = 'modal-overlay';
-        o.style.display = 'flex';
-        o.innerHTML = `<div class="modal-card"><div class="modal-header"><h2>Entrar no BAHUB</h2></div>
-            <input id="lg-email" class="input-texto" type="email" placeholder="E-mail" autocomplete="username">
-            <input id="lg-senha" class="input-texto" type="password" placeholder="Senha (mínimo 6 caracteres)" autocomplete="current-password">
-            <p id="lg-msg" style="color:#dc2626;font-size:13px;min-height:18px;margin:0 0 12px"></p>
-            <button class="btn-salvar" id="lg-entrar" type="button">Entrar</button>
-            <button class="aba" id="lg-criar" type="button" style="margin-left:8px;color:#475569;border-color:#cbd5e1">Criar conta</button></div>`;
+        o.className = 'lg-overlay';
         document.body.appendChild(o);
-        const q = s => o.querySelector(s), msg = t => q('#lg-msg').textContent = t;
-        const cred = () => ({ email: q('#lg-email').value.trim(), password: q('#lg-senha').value });
-        q('#lg-entrar').onclick = async () => {
-            const { data, error } = await sb.auth.signInWithPassword(cred());
-            if (error) return msg('E-mail ou senha incorretos.');
+        let modo = 'entrar', email = '', senha = '';
+        const esc = t => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const q = s => o.querySelector(s);
+        const msg = (t, ok) => { const m = q('.lg-msg'); m.textContent = t; m.className = 'lg-msg' + (ok ? ' ok' : ''); };
+        const traduz = e => {
+            const m = (e.message || '').toLowerCase();
+            if (m.includes('invalid login')) return 'E-mail ou senha incorretos.';
+            if (m.includes('rate limit') || e.status === 429) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
+            if (m.includes('password')) return 'A senha precisa ter no mínimo 6 caracteres.';
+            if (m.includes('invalid') && m.includes('email')) return 'Digite um e-mail válido.';
+            return 'Não foi possível concluir: ' + e.message;
+        };
+        const ocupado = (btn, on, txt) => { btn.disabled = on; if (txt) btn.textContent = txt; };
+        const entrar = async (btn, txtBtn) => {
+            ocupado(btn, true, 'Entrando...');
+            const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+            ocupado(btn, false, txtBtn);
+            if (error) {
+                if ((error.message || '').toLowerCase().includes('not confirmed')) { modo = 'confirmar'; return desenhar('Seu e-mail ainda não foi confirmado. Abra o link que enviamos.'); }
+                return msg(traduz(error));
+            }
             o.remove(); res(data.session);
         };
-        q('#lg-criar').onclick = async () => {
-            const { data, error } = await sb.auth.signUp(cred());
-            if (error) return msg(error.message);
-            if (data.session) { o.remove(); res(data.session); }
-            else msg('Conta criada. Confirme o e-mail e clique em Entrar.');
-        };
-        q('#lg-senha').addEventListener('keydown', e => { if (e.key === 'Enter') q('#lg-entrar').click(); });
+
+        function desenhar(aviso) {
+            if (modo === 'confirmar') {
+                o.innerHTML = `<div class="lg-card">
+                    <div class="lg-logo ok">✉</div><h2>Confira seu e-mail</h2>
+                    <p class="lg-sub">Enviamos um link de confirmação para <strong>${esc(email)}</strong>.</p>
+                    <ol class="lg-passos"><li>Abra o e-mail (olhe também o spam e a lixeira).</li><li>Clique no link de confirmação.</li><li>Volte aqui e toque em “Já confirmei”.</li></ol>
+                    <p class="lg-msg" role="alert"></p>
+                    <button class="lg-principal" id="lg-ja" type="button">Já confirmei, entrar</button>
+                    <div class="lg-links"><button id="lg-reenviar" type="button">Reenviar e-mail</button><button id="lg-voltar" type="button">Voltar</button></div></div>`;
+                if (aviso) msg(aviso);
+                q('#lg-ja').onclick = () => entrar(q('#lg-ja'), 'Já confirmei, entrar');
+                q('#lg-voltar').onclick = () => { modo = 'entrar'; desenhar(); };
+                q('#lg-reenviar').onclick = async () => {
+                    const b = q('#lg-reenviar');
+                    b.disabled = true;
+                    const { error } = await sb.auth.resend({ type: 'signup', email });
+                    if (error) { b.disabled = false; return msg(traduz(error)); }
+                    msg('E-mail reenviado. Confira sua caixa de entrada.', true);
+                    let s = 60; const t = setInterval(() => { b.textContent = s > 0 ? `Reenviar em ${s--}s` : 'Reenviar e-mail'; if (s < 0) { clearInterval(t); b.disabled = false; } }, 1000);
+                };
+                return;
+            }
+            const criar = modo === 'criar', rot = criar ? 'Criar conta' : 'Entrar';
+            o.innerHTML = `<div class="lg-card">
+                <div class="lg-logo">BA</div>
+                <h2>${criar ? 'Criar sua conta' : 'Bem-vindo de volta'}</h2>
+                <p class="lg-sub">${criar ? 'Guarde seus projetos na nuvem e acesse de qualquer computador.' : 'Entre para acessar seus projetos em qualquer computador.'}</p>
+                <div class="lg-abas"><button type="button" data-m="entrar" class="${criar ? '' : 'on'}">Entrar</button><button type="button" data-m="criar" class="${criar ? 'on' : ''}">Criar conta</button></div>
+                <label>E-mail<input id="lg-email" type="email" autocomplete="username" placeholder="voce@empresa.com" value="${esc(email)}"></label>
+                <label>Senha<input id="lg-senha" type="password" autocomplete="${criar ? 'new-password' : 'current-password'}" placeholder="Mínimo 6 caracteres"></label>
+                ${criar ? '<label>Confirmar senha<input id="lg-senha2" type="password" autocomplete="new-password" placeholder="Repita a senha"></label>' : ''}
+                <p class="lg-msg" role="alert"></p>
+                <button class="lg-principal" id="lg-ok" type="button">${rot}</button></div>`;
+            if (aviso) msg(aviso, true);
+            o.querySelectorAll('.lg-abas button').forEach(b => b.onclick = () => { email = q('#lg-email').value.trim(); modo = b.dataset.m; desenhar(); });
+            const enviar = async () => {
+                email = q('#lg-email').value.trim(); senha = q('#lg-senha').value;
+                if (!email || !senha) return msg('Preencha e-mail e senha.');
+                if (!criar) return entrar(q('#lg-ok'), rot);
+                if (senha.length < 6) return msg('A senha precisa ter no mínimo 6 caracteres.');
+                if (senha !== q('#lg-senha2').value) return msg('As senhas não conferem.');
+                const btn = q('#lg-ok'); ocupado(btn, true, 'Criando...');
+                const { data, error } = await sb.auth.signUp({ email, password: senha });
+                ocupado(btn, false, rot);
+                if (error) return msg(traduz(error));
+                if (data.session) { o.remove(); return res(data.session); }
+                if (data.user && data.user.identities && data.user.identities.length === 0) { modo = 'entrar'; return desenhar('Este e-mail já tem conta. Digite sua senha para entrar.'); }
+                modo = 'confirmar'; desenhar();
+            };
+            q('#lg-ok').onclick = enviar;
+            o.querySelectorAll('input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') enviar(); }));
+            q(criar || email ? '#lg-senha' : '#lg-email').focus();
+        }
+        desenhar();
     });
 }
 async function sairDaConta() {
@@ -98,8 +155,12 @@ async function sairDaConta() {
 
 /* ---------- inicialização: carrega da nuvem antes de a página montar ---------- */
 async function iniciarBanco() {
-    if (typeof supabase === 'undefined' || typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.startsWith('COLE')) {
-        setStatus('Modo local (nuvem não configurada)');
+    const configurado = typeof SUPABASE_URL !== 'undefined' && !SUPABASE_URL.startsWith('COLE')
+        && typeof SUPABASE_ANON_KEY !== 'undefined' && !SUPABASE_ANON_KEY.startsWith('COLE');
+    if (!configurado || typeof supabase === 'undefined') {
+        setStatus(!configurado
+            ? 'Modo local: preencha js/config.js para ativar a nuvem'
+            : 'Modo local: biblioteca do Supabase não carregou (sem internet?)');
         document.querySelectorAll('.btn-rodape').forEach(b => b.remove());
         return;
     }
