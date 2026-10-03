@@ -169,6 +169,8 @@ async function iniciarBanco() {
     let { data: { session } } = await sb.auth.getSession();
     if (!session) session = await telaLogin();
     usuario = session.user;
+    const elEmail = document.getElementById('email-usuario');
+    if (elEmail) elEmail.textContent = 'Conectado como ' + usuario.email;
     const { data, error } = await sb.from('bahub_dados').select('dados,atualizado_em')
         .eq('user_id', usuario.id).maybeSingle();
     if (error) {
@@ -185,6 +187,7 @@ async function iniciarBanco() {
         await sincronizarMidiasLocais();
     }
     setStatus('Salvo na nuvem');
+    reenviarPendentes();
 }
 const BAHUB_PRONTO = iniciarBanco().catch(e => { console.error(e); setStatus('Erro de conexão'); });
 
@@ -212,13 +215,32 @@ async function enviarMidia(id, blob, tipo) {
     const { error } = await sb.storage.from(BUCKET).upload(usuario.id + '/' + id, blob, { contentType: tipo, upsert: true });
     if (error) throw error;
 }
+const PENDENTES = 'bahub_midias_pendentes';
+const lerPendentes = () => JSON.parse(localStorage.getItem(PENDENTES) || '[]');
 async function salvarMidiaBlob(blob, tipo) {
     if (!blob) return null;
     const id = 'midia_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
     tipo = tipo || blob.type || 'application/octet-stream';
     await idbOp('readwrite', s => s.put({ blob, tipo }, id));
-    await enviarMidia(id, blob, tipo);
+    try {
+        await enviarMidia(id, blob, tipo);
+    } catch (e) {
+        console.error('Falha ao enviar mídia:', e);
+        localStorage.setItem(PENDENTES, JSON.stringify([...lerPendentes(), id]));
+        alert('A mídia foi salva neste navegador, mas NÃO foi enviada para a nuvem:\n' + (e.message || e) +
+            '\n\nEla será reenviada automaticamente na próxima vez que abrir o sistema. ' +
+            'Se persistir, rode o trecho de Storage do setup.sql no Supabase.');
+    }
     return id;
+}
+async function reenviarPendentes() {
+    const restantes = [];
+    for (const id of lerPendentes()) {
+        const r = await idbOp('readonly', s => s.get(id));
+        if (!r) continue;
+        try { await enviarMidia(id, r.blob, r.tipo); } catch (e) { restantes.push(id); }
+    }
+    localStorage.setItem(PENDENTES, JSON.stringify(restantes));
 }
 async function obterMidiaBlob(id) {
     if (!id) return null;

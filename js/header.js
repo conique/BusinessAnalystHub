@@ -17,7 +17,7 @@
             </label>
             <button class="btn-novo" id="topo-novo" type="button">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
-                <span>Novo Registro</span>
+                <span>Nova Página</span>
             </button>
         </div>`;
 

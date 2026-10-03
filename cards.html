@@ -33,12 +33,14 @@
                 type="text"
                 class="input-titulo-card"
                 id="inputTituloCard"
+                onpaste="capturarCole(event)"
                 placeholder="Novo card"
             >
 
             <textarea
                 class="input-legenda-card"
                 id="inputLegendaCard"
+                onpaste="capturarCole(event)"
                 placeholder="Escreva a legenda ou cole uma imagem/vídeo aqui (Ctrl+V)..."
                 rows="3"
             ></textarea>
@@ -53,6 +55,7 @@
                 <input
                     type="file"
                     id="inputMidiaCard"
+                    onchange="carregarArquivoTradicional(this)"
                     class="input-file-culto"
                     accept="image/*,video/*"
                 >
@@ -77,6 +80,7 @@
     <footer class="footer-bahub">
     <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
     <span id="status-nuvem" style="color:#34d399;font-weight:500"></span>
+    <span id="email-usuario" class="email-usuario"></span>
     <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
