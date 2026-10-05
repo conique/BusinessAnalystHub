@@ -1,11 +1,14 @@
 /* BAHUB — dados no Supabase, com cache local (localStorage + IndexedDB) */
 const CHAVE_DB = 'bahub_db';
 const BUCKET = 'midias';
+const PEND_FLAG = 'bahub_pendente';
+let seq = 0;
 let sb = null, usuario = null, versao = null, timer = null, fila = Promise.resolve(), ultimoStatus = '';
 
 function lerBancoDeDados() { return JSON.parse(localStorage.getItem(CHAVE_DB)) || []; }
 function salvarBancoDeDados(dados) {
     localStorage.setItem(CHAVE_DB, JSON.stringify(dados));
+    if (sb && usuario) { localStorage.setItem(PEND_FLAG, '1'); seq++; }
     agendarEnvio();
 }
 function setStatus(t) {
@@ -15,6 +18,12 @@ function setStatus(t) {
 }
 
 /* ---------- envio com controle de conflito ---------- */
+/* Envia já (use antes de trocar de página, para não perder o que acabou de salvar). */
+function descarregarNuvem() {
+    clearTimeout(timer);
+    fila = fila.then(enviar);
+    return fila;
+}
 function agendarEnvio() {
     if (!sb || !usuario) return;
     setStatus('Salvando...');
@@ -24,6 +33,7 @@ function agendarEnvio() {
 async function enviar() {
     if (!sb || !usuario) return;
     const dados = lerBancoDeDados();
+    const minhaSeq = seq;
     try {
         let r;
         if (versao === null) {
@@ -42,6 +52,7 @@ async function enviar() {
             }
             versao = r.data[0].atualizado_em;
         }
+        if (minhaSeq === seq) localStorage.removeItem(PEND_FLAG);
         setStatus('Salvo na nuvem');
     } catch (e) {
         console.error(e);
@@ -150,6 +161,7 @@ async function sairDaConta() {
     }
     await sb.auth.signOut();
     localStorage.removeItem(CHAVE_DB);
+    localStorage.removeItem(PEND_FLAG);
     location.reload();
 }
 
@@ -180,8 +192,12 @@ async function iniciarBanco() {
         return;
     }
     if (data) {
-        localStorage.setItem(CHAVE_DB, JSON.stringify(data.dados));
         versao = data.atualizado_em;
+        if (localStorage.getItem(PEND_FLAG) === '1') {
+            await enviar();   // havia alteração local ainda não enviada (ex.: trocou de página rápido)
+        } else {
+            localStorage.setItem(CHAVE_DB, JSON.stringify(data.dados));
+        }
     } else if (lerBancoDeDados().length) {   // primeira vez: sobe o que já existe neste navegador
         await enviar();
         await sincronizarMidiasLocais();
