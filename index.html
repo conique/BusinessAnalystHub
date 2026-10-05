@@ -718,7 +718,7 @@ function fecharModal() {
 }
 
 
-function salvarNovoProjeto() {
+async function salvarNovoProjeto() {
 
     const nome =
         document
@@ -757,8 +757,7 @@ function salvarNovoProjeto() {
 
 
     salvarBancoDeDados(db);
-
-
+    await descarregarNuvem();
     location.href =
         `cards.html?id=${db.length - 1}`;
 
