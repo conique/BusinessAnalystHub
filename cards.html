@@ -7,7 +7,7 @@
 </head>
 <body>
 
-    <header class="topo" id="topo" data-atual=""></header>
+    <header class="topo" id="topo" data-atual="" data-simples="true"></header>
 <script src="js/header.js"></script>
 <div class="cabecalho-pagina">
         <a href="index.html" class="btn-voltar">‹</a>
@@ -15,12 +15,14 @@
         <h1 class="titulo-projeto" id="header-titulo">A carregar...</h1>
 
         <span class="selo selo-andamento" id="header-status">Em andamento</span>
+        <span class="pilula-area" id="header-area"></span>
+        <span class="pilula-prazo" id="header-prazo" hidden></span>
     </div>
 
     <div class="timeline-container">
 
         <!-- Formulário Novo Card -->
-        <div class="form-novo-card">
+        <div class="form-novo-card" id="form-novo-card" hidden>
 
             <select class="seletor-tipo" id="inputTipoCard">
                 <option value="Atualização">Atualização</option>
@@ -118,6 +120,155 @@
            RENDERIZAR TIMELINE
         ========================================================= */
 
+        /* Minimizar/expandir cards: botão "−" (expandido) vira "□" (minimizado). */
+        const ICONE_MENOS = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>';
+        const ICONE_QUADRADO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>';
+
+        function aplicarMinimizacao(box, minimizado, animar) {
+            const conteudo = box.querySelector('[id^="card-conteudo-"]');
+            box.classList.toggle('minimizado', minimizado);
+            if (conteudo) {
+                if (minimizado) {
+                    const d = conteudo.getAttribute('ondblclick');
+                    if (d) { conteudo.dataset.dbl = d; conteudo.removeAttribute('ondblclick'); }
+                    conteudo.style.cursor = 'default';
+                    conteudo.removeAttribute('title');
+                } else if (conteudo.dataset.dbl) {
+                    conteudo.setAttribute('ondblclick', conteudo.dataset.dbl);
+                    conteudo.style.cursor = 'pointer';
+                    conteudo.title = 'Duplo clique para editar';
+                }
+            }
+            const b = box.querySelector('.btn-min-card');
+            if (b) {
+                b.innerHTML = minimizado ? ICONE_QUADRADO : ICONE_MENOS;
+                b.title = minimizado ? 'Expandir card' : 'Minimizar card';
+                b.setAttribute('aria-label', b.title);
+                b.setAttribute('aria-expanded', String(!minimizado));
+            }
+            if (animar) { box.classList.remove('anim-min'); void box.offsetWidth; box.classList.add('anim-min'); }
+        }
+
+        function sincronizarMinimizar() {
+            document.querySelectorAll('#feed-timeline .timeline-item').forEach(item => {
+                const box = item.querySelector('.timeline-card');
+                if (!box) return;
+                const card = projetoAtual.cards[Number(box.id.replace('card-box-', ''))];
+                const b = box.querySelector('.btn-min-card');
+                if (!card || !b) return;
+                b.onclick = () => {
+                    if (box.querySelector('.btn-enviar-card')) return;   // card em edição
+                    const novo = !box.classList.contains('minimizado');
+                    card.minimizado = novo;
+                    db[projetoId] = projetoAtual;
+                    salvarBancoDeDados(db);
+                    aplicarMinimizacao(box, novo, true);
+                };
+                aplicarMinimizacao(box, !!card.minimizado, false);
+            });
+        }
+
+        /* Lápis: se o card estiver minimizado, expande e abre a edição. */
+        function editarCardPeloLapis(index) {
+            const box = document.getElementById(`card-box-${index}`);
+            if (!box || box.querySelector('.btn-enviar-card')) return;
+            if (box.classList.contains('minimizado')) {
+                projetoAtual.cards[index].minimizado = false;
+                db[projetoId] = projetoAtual;
+                salvarBancoDeDados(db);
+                aplicarMinimizacao(box, false, false);
+            }
+            ativarEdicaoCard(index);
+        }
+
+        /* Formulário de novo card: abre pelo botão "+" ao lado do primeiro card.
+           Em projetos sem cards ele fica sempre aberto. */
+        let formularioAberto = false;
+
+        function abrirFecharFormulario(abrir, focar) {
+            const form = document.getElementById('form-novo-card');
+            formularioAberto = abrir;
+            if (abrir) {
+                form.hidden = false;
+                form.classList.remove('fechando', 'entrando');
+                void form.offsetWidth;
+                form.classList.add('entrando');
+                if (focar) setTimeout(() => document.getElementById('inputTituloCard').focus(), 120);
+            } else {
+                form.classList.remove('entrando');
+                form.classList.add('fechando');
+                setTimeout(() => {
+                    if (!formularioAberto) { form.hidden = true; form.classList.remove('fechando'); }
+                }, 220);
+            }
+            const b = document.querySelector('.btn-mais-card');
+            if (b) { b.classList.toggle('aberto', abrir); b.setAttribute('aria-expanded', String(abrir)); }
+        }
+
+        function sincronizarFormulario() {
+            const form = document.getElementById('form-novo-card');
+            const primeiro = document.querySelector('#feed-timeline .timeline-item');
+            if (!primeiro) {                       // sem cards: formulário sempre visível
+                formularioAberto = true;
+                form.hidden = false;
+                form.classList.remove('fechando', 'entrando');
+                return;
+            }
+            if (!form.classList.contains('fechando')) form.hidden = !formularioAberto;
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn-mais-card' + (formularioAberto ? ' aberto' : '');
+            b.title = 'Novo card';
+            b.setAttribute('aria-label', 'Novo card');
+            b.setAttribute('aria-expanded', String(formularioAberto));
+            b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>';
+            b.onclick = () => abrirFecharFormulario(!formularioAberto, true);
+            primeiro.appendChild(b);
+        }
+
+        /* Campos de legenda crescem junto com o texto (Enter pula linha). */
+        function ajustarAlturaTextarea(campo) {
+            if (!campo) return;
+            campo.style.height = 'auto';
+            campo.style.height = campo.scrollHeight + 2 + 'px';
+        }
+        function ajustarTodasLegendas() {
+            document.querySelectorAll('textarea.input-legenda-card').forEach(ajustarAlturaTextarea);
+        }
+        document.addEventListener('input', e => {
+            if (e.target.matches && e.target.matches('textarea.input-legenda-card')) ajustarAlturaTextarea(e.target);
+        });
+        document.addEventListener('focusin', e => {
+            if (e.target.matches && e.target.matches('textarea.input-legenda-card')) ajustarAlturaTextarea(e.target);
+        });
+        window.addEventListener('resize', ajustarTodasLegendas);
+
+        function escaparHTML(texto) {
+            return String(texto).replace(/[&<>"']/g, c => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
+        /* Legenda: preserva quebras de linha e transforma links em clicáveis (com escape de HTML). */
+        function formatarLegenda(legenda) {
+            const puro = String(legenda || '').replace(/<br\s*\/?>/gi, '\n');
+            return escaparHTML(puro)
+                .replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, m => {
+                    let url = m, fim = '';
+                    const sobra = url.match(/[.,;:!?)\]]+$/);
+                    if (sobra) { fim = sobra[0]; url = url.slice(0, -fim.length); }
+                    const href = /^www\./i.test(url) ? 'https://' + url : url;
+                    return `<a href="${href}" target="_blank" rel="noopener noreferrer" ondblclick="event.stopPropagation()">${url}</a>${fim}`;
+                })
+                .replace(/\n/g, '<br>');
+        }
+
+        function formatarPrazoHeader(prazo) {
+            if (!prazo || prazo === '---') return '';
+            const m = String(prazo).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            return m ? `${m[3]}/${m[2]}/${m[1]}` : prazo;
+        }
+
         async function renderizarTimeline() {
 
             document.getElementById('header-titulo').innerText =
@@ -132,6 +283,13 @@
                 'Em andamento';
 
             statusHeader.innerText = rotuloHeader;
+
+            document.getElementById('header-area').textContent =
+                projetoAtual.area || 'Projeto';
+            const prazoHeader = formatarPrazoHeader(projetoAtual.prazo);
+            const elPrazo = document.getElementById('header-prazo');
+            elPrazo.hidden = !prazoHeader;
+            elPrazo.textContent = prazoHeader ? 'Prazo: ' + prazoHeader : '';
 
             /*
              * Usa exatamente a mesma cor do rótulo
@@ -203,32 +361,29 @@
                                 type="button"
                             ></button>
 
-                            <button
-                                class="btn-card-opcoes"
-                                id="btn-opcoes-${indexReal}"
-                                onclick="alternarMenuCard(event, ${indexReal})"
-                                type="button"
-                            >
-                                ⋮
-                            </button>
-
-                            <div
-                                class="menu-card-flutuante"
-                                id="menu-card-${indexReal}"
-                            >
+                            <div class="card-controles">
                                 <button
-                                    onclick="ativarEdicaoCard(${indexReal})"
+                                    class="btn-ctrl btn-editar-card"
+                                    onclick="editarCardPeloLapis(${indexReal})"
+                                    title="Editar card"
+                                    aria-label="Editar card"
                                     type="button"
                                 >
-                                    Editar
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
                                 </button>
-
                                 <button
+                                    class="btn-ctrl btn-min-card"
+                                    type="button"
+                                    aria-label="Minimizar card"
+                                ></button>
+                                <button
+                                    class="btn-ctrl btn-fechar-card"
                                     onclick="deletarCard(${indexReal})"
-                                    style="color: #ff4d4d;"
+                                    title="Excluir card"
+                                    aria-label="Excluir card"
                                     type="button"
                                 >
-                                    Deletar
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14"></path><path d="M19 5L5 19"></path></svg>
                                 </button>
                             </div>
 
@@ -244,7 +399,7 @@
 
                                 <h3>${card.titulo || ''}</h3>
 
-                                <p>${card.legenda || ''}</p>
+                                <p class="legenda-card">${formatarLegenda(card.legenda)}</p>
 
                                 <div
                                     class="card-midia-container"
@@ -299,7 +454,7 @@
                             <span>${escaparHTML(n.data || '')}</span>
                             <button type="button" class="nota-apagar" title="Apagar nota" onclick="apagarNota(${index}, ${i})">×</button>
                         </div>
-                        <p>${escaparHTML(n.texto)}</p>
+                        <p class="legenda-card">${formatarLegenda(n.texto)}</p>
                     </div>
                 </div>`).join('');
             area.innerHTML = `
@@ -732,6 +887,8 @@
 
                 limparFormularioNovoCard();
 
+                abrirFecharFormulario(false);
+
                 await renderizarTimeline();
 
             } catch (erro) {
@@ -790,12 +947,11 @@
                     event.target;
 
                 if (
-                    (
-                        campo.id === 'inputTituloCard' ||
-                        campo.id === 'inputLegendaCard'
-                    ) &&
                     event.key === 'Enter' &&
-                    !event.shiftKey
+                    (
+                        (campo.id === 'inputTituloCard' && !event.shiftKey) ||
+                        (campo.id === 'inputLegendaCard' && (event.ctrlKey || event.metaKey))
+                    )
                 ) {
 
                     event.preventDefault();
@@ -806,12 +962,11 @@
                 }
 
                 if (
-                    (
-                        campo.id.startsWith('edit-titulo-') ||
-                        campo.id.startsWith('edit-legenda-')
-                    ) &&
                     event.key === 'Enter' &&
-                    !event.shiftKey
+                    (
+                        (campo.id.startsWith('edit-titulo-') && !event.shiftKey) ||
+                        (campo.id.startsWith('edit-legenda-') && (event.ctrlKey || event.metaKey))
+                    )
                 ) {
 
                     event.preventDefault();
@@ -1097,7 +1252,7 @@
                     rows="3"
                     placeholder="Escreva a legenda ou cole uma imagem/vídeo aqui (Ctrl+V)..."
                     onpaste="capturarColeEdicao(event, ${index})"
-                >${legendaPura}</textarea>
+                >${escaparHTML(legendaPura)}</textarea>
 
                 <div id="container-preview-edicao-${index}">
                     ${previewInicialHTML}
@@ -1537,23 +1692,13 @@
            INICIALIZAÇÃO
         ========================================================= */
 
-        function aplicarBuscaCards() {
-    const termo = window.__termoBusca || '';
-    document.querySelectorAll('#feed-timeline .timeline-item').forEach(item => {
-        item.style.display = !termo || item.textContent.toLowerCase().includes(termo) ? '' : 'none';
-    });
-}
-window.aoBuscar = t => { window.__termoBusca = t; aplicarBuscaCards(); };
-window.aoNovoRegistro = () => {
-    const campo = document.getElementById('inputTituloCard');
-    campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    campo.focus();
-};
-const _renderizarTimelineBase = renderizarTimeline;
+        const _renderizarTimelineBase = renderizarTimeline;
 renderizarTimeline = async function () {
     await _renderizarTimelineBase();
     if (window.BAHUB_Topo) BAHUB_Topo.definirAtual(projetoAtual.nome);
-    aplicarBuscaCards();
+    sincronizarFormulario();
+    sincronizarMinimizar();
+    ajustarTodasLegendas();
 };
 
 (async function() {
