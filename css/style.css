@@ -64,8 +64,9 @@ button,input,textarea,select{font-family:inherit}
 #conteudo-tabela .aba{margin:14px 16px;border:0;color:#cbd5e1}
 #conteudo-tabela .aba:hover{text-decoration:underline;background:transparent}
 .tabela-rolagem{overflow-x:auto}
+thead{background:linear-gradient(rgba(2,24,20,.75),rgba(2,24,20,.92)),url('../bg-header.png') center/cover}
 table{width:100%;border-collapse:collapse;text-align:left;font-size:14px;color:#e2e8f0}
-th{background:var(--bg);color:var(--texto-2);font-size:12px;font-weight:500;letter-spacing:.04em;
+th{background:transparent;color:var(--texto-2);font-size:12px;font-weight:500;letter-spacing:.04em;
   padding:16px 24px;border-bottom:1px solid var(--borda)}
 td{padding:14px 24px;border-bottom:1px solid rgba(8,56,47,.6);vertical-align:middle}
 tbody tr{cursor:pointer;transition:background .15s}
@@ -221,22 +222,10 @@ body>.timeline-container,body>#conteudo-tabela,body>#estado-vazio{margin-bottom:
 .email-usuario{color:#cbd5e1;font-weight:500}
 .email-usuario:empty{display:none}
 
-/* Brilho nos rótulos de status */
-.selo{position:relative;overflow:hidden;--glow:#183cf5;
-  box-shadow:0 0 12px -1px color-mix(in srgb,var(--glow) 65%,transparent),inset 0 1px 0 rgba(255,255,255,.38);
-  animation:brilho 3.2s ease-in-out infinite}
-.selo::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;
-  background:linear-gradient(105deg,transparent,rgba(255,255,255,.45),transparent);
-  transform:skewX(-20deg);animation:reflexo 4.5s ease-in-out infinite}
-@keyframes brilho{0%,100%{box-shadow:0 0 8px -1px color-mix(in srgb,var(--glow) 50%,transparent),inset 0 1px 0 rgba(255,255,255,.38)}
-  50%{box-shadow:0 0 16px 0 color-mix(in srgb,var(--glow) 80%,transparent),inset 0 1px 0 rgba(255,255,255,.38)}}
-@keyframes reflexo{0%,55%{left:-60%}100%{left:130%}}
-@media(prefers-reduced-motion:reduce){.selo,.selo::after{animation:none}}
-
 /* ---------- Semáforo do card ---------- */
 .btn-semaforo{position:absolute;top:24px;right:62px;width:20px;height:20px;border-radius:50%;border:0;padding:0;cursor:pointer;
-  background:var(--cor-sem);box-shadow:0 0 0 4px color-mix(in srgb,var(--cor-sem) 22%,transparent),0 0 12px color-mix(in srgb,var(--cor-sem) 70%,transparent),inset 0 1px 1px rgba(255,255,255,.55);
-  transition:background .25s,box-shadow .25s,transform .15s}
+  background:var(--cor-sem);box-shadow:none;
+  transition:background .25s,filter .15s,transform .15s}
 .btn-semaforo.verde{--cor-sem:#22c55e}.btn-semaforo.vermelho{--cor-sem:#ef4444}.btn-semaforo.amarelo{--cor-sem:#facc15}
 .btn-semaforo:hover{transform:scale(1.15)}
 .btn-semaforo.pulo{animation:pulo .35s ease}
@@ -262,3 +251,78 @@ body>.timeline-container,body>#conteudo-tabela,body>#estado-vazio{margin-bottom:
 .nota-nova button{position:absolute;right:4px;padding:5px 14px;border:0;border-radius:9999px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
 .nota-nova button:hover{background:#029a66}
 @media(prefers-reduced-motion:reduce){.btn-semaforo.pulo{animation:none}}
+/* ===== Padronização dos botões: sem brilho/luz e mesmo hover em todos ===== */
+.btn-novo,.btn-criar-destaque,.btn-salvar,.btn-enviar-card,.lg-principal,.btn-salvar-inline,
+.nota-nova button,.label-file,.btn-semaforo{box-shadow:none;transition:filter .15s,transform .15s,background .15s}
+
+/* botões preenchidos: mantêm a cor e só ficam um pouco mais claros */
+.btn-novo:hover,.btn-criar-destaque:hover,.btn-salvar:hover,.btn-enviar-card:hover,.lg-principal:hover{
+  background:var(--accent-btn);box-shadow:none;transform:none;filter:brightness(1.12)}
+.btn-salvar-inline:hover,.nota-nova button:hover{background:var(--accent);filter:brightness(1.12)}
+.label-file:hover{background:#192421;filter:brightness(1.35)}
+.btn-semaforo:hover{transform:none;filter:brightness(1.15)}
+.btn-novo:active,.btn-criar-destaque:active,.btn-salvar:active,.btn-enviar-card:active,.lg-principal:active,
+.btn-salvar-inline:active,.nota-nova button:active,.label-file:active{transform:scale(.97)}
+
+/* botões de contorno/fantasma sobre fundo escuro */
+.aba:hover,.btn-voltar:hover,.btn-rodape:hover,.btn-tabela-opcoes:hover,#conteudo-tabela .aba:hover{
+  background:var(--surface-2);color:#fff;text-decoration:none}
+/* botões de contorno/fantasma sobre fundo claro (cards, modais, login) */
+.btn-card-opcoes:hover,.btn-cancelar-edicao:hover,.btn-fechar:hover,.lg-abas button:not(.on):hover{
+  background:#f1f5f9;color:#334155}
+.lg-links button:hover{background:#ecfdf5}
+
+.legenda-card{white-space:normal}
+.legenda-card a,.legenda-card a:visited{color:#2563eb;text-decoration:underline;text-underline-offset:2px;word-break:break-all;cursor:pointer;pointer-events:auto}
+.legenda-card a:hover{color:#1d4ed8}
+.pilula-prazo{display:inline-block;padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:500;color:#cbd5e1;
+  background:var(--bg);border:1px solid var(--borda)}
+.pilula-prazo[hidden]{display:none}
+
+textarea.input-legenda-card{resize:none;overflow:hidden;min-height:48px;transition:height .12s ease}
+
+/* ---------- Botão "+" e abertura animada do card de criação ---------- */
+.form-novo-card[hidden]{display:none}
+.form-novo-card.entrando{animation:cardEntra .4s cubic-bezier(.2,.8,.2,1) both}
+.form-novo-card.fechando{animation:cardSai .2s ease-in both}
+@keyframes cardEntra{from{opacity:0;transform:translateY(-18px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes cardSai{to{opacity:0;transform:translateY(-10px) scale(.98)}}
+.form-novo-card[hidden]+#feed-timeline .timeline-item:first-child{margin-top:0}
+.timeline-item{position:relative}
+.btn-mais-card{position:absolute;top:46px;right:-64px;width:44px;height:44px;border-radius:50%;border:0;padding:0;
+  background:var(--accent-btn);color:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:filter .15s,transform .15s}
+.btn-mais-card:hover{filter:brightness(1.12)}
+.btn-mais-card:active{transform:scale(.94)}
+.btn-mais-card svg{transition:transform .25s ease}
+.btn-mais-card.aberto svg{transform:rotate(45deg)}
+@media(max-width:1060px){.btn-mais-card{right:0;top:-4px;width:38px;height:38px}}
+@media(prefers-reduced-motion:reduce){.form-novo-card.entrando,.form-novo-card.fechando{animation:none}}
+
+/* ---------- Botão "+" branco, controles do card (− / ✕) e card minimizado ---------- */
+.btn-mais-card{background:#fff}
+.btn-mais-card:hover{filter:brightness(.88)}
+.card-controles{position:absolute;top:14px;right:16px;display:flex;gap:2px;z-index:2}
+.btn-ctrl{width:36px;height:30px;display:flex;align-items:center;justify-content:center;border:0;border-radius:8px;
+  background:transparent;color:#475569;cursor:pointer;padding:0;transition:background .15s,color .15s,transform .15s}
+.btn-ctrl:hover{background:#f1f5f9;color:#0f172a}
+.btn-ctrl:active{transform:scale(.94)}
+.timeline-card h3{padding-right:124px}
+/* semáforo fora do card, ao lado, onde ficava a bolinha de minimizar */
+.timeline-card>.btn-semaforo{top:16px;right:-52px}
+.timeline-item:first-child .timeline-card>.btn-semaforo{top:72px}
+
+.timeline-card.minimizado{padding:12px 22px;border-radius:9999px}
+.timeline-card.minimizado>.card-notas,.timeline-card.minimizado .legenda-card,
+.timeline-card.minimizado .card-midia-container{display:none}
+.timeline-card.minimizado>[id^="card-conteudo-"]{display:flex;align-items:center;gap:12px;min-width:0}
+.timeline-card.minimizado .card-tipo-tag{margin:0;flex-shrink:0}
+.timeline-card.minimizado h3{margin:0;padding:0 124px 0 0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timeline-card.minimizado .card-controles{top:50%;transform:translateY(-50%)}
+.timeline-card.anim-min{animation:cardMin .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes cardMin{from{opacity:.4;transform:scale(.985)}to{opacity:1;transform:none}}
+@media(max-width:1060px){
+  .timeline-card>.btn-semaforo{top:-30px;right:12px}
+  .timeline-item:first-child .timeline-card>.btn-semaforo{top:-30px;right:56px}
+}
+@media(prefers-reduced-motion:reduce){.timeline-card.anim-min{animation:none}}
