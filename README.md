@@ -98,8 +98,3 @@ Além disso, o banco precisa ter a tabela/estrutura adequada para armazenar os d
 - O projeto foi desenvolvido como uma solução de front-end leve e rápida.
 - A parte de dados e autenticação depende do Supabase configurado corretamente.
 - A interface está em português e foi pensada para uso interno de equipe.
-
-## Licença
-
-Este projeto não possui uma licença definida no repositório. Se for reutilizar o código em produção, verifique a política interna da organização antes de distribuir ou publicar.
-
