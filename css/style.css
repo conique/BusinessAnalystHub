@@ -1,4 +1,3 @@
-/* BAHUB — novo design (Stitch): verde-escuro, cards brancos arredondados, pílulas */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root{
@@ -226,7 +225,7 @@ body>.timeline-container,body>#conteudo-tabela,body>#estado-vazio{margin-bottom:
 .btn-semaforo{position:absolute;top:24px;right:62px;width:20px;height:20px;border-radius:50%;border:0;padding:0;cursor:pointer;
   background:var(--cor-sem);box-shadow:none;
   transition:background .25s,filter .15s,transform .15s}
-.btn-semaforo.verde{--cor-sem:#22c55e}.btn-semaforo.vermelho{--cor-sem:#ef4444}.btn-semaforo.amarelo{--cor-sem:#facc15}
+.btn-semaforo.verde{--cor-sem:#22c55e}.btn-semaforo.vermelho{--cor-sem:#ef4444}.btn-semaforo.amarelo{--cor-sem:#facc15}.btn-semaforo.cinza{--cor-sem:#9ca3af}
 .btn-semaforo:hover{transform:scale(1.15)}
 .btn-semaforo.pulo{animation:pulo .35s ease}
 @keyframes pulo{50%{transform:scale(1.45)}}
@@ -326,3 +325,76 @@ textarea.input-legenda-card{resize:none;overflow:hidden;min-height:48px;transiti
   .timeline-item:first-child .timeline-card>.btn-semaforo{top:-30px;right:56px}
 }
 @media(prefers-reduced-motion:reduce){.timeline-card.anim-min{animation:none}}
+
+/* =====================================================================
+   RESPONSIVO (celular, tablet e desktop)
+   ===================================================================== */
+body{overflow-x:clip}
+img,video{max-width:100%;height:auto}
+
+/* ---- Tablet / telas médias ---- */
+@media(max-width:1060px){
+  .topo{padding:12px 20px}
+  .timeline-container{max-width:100%!important}
+}
+
+/* ---- Celular ---- */
+@media(max-width:700px){
+  /* campos com 16px evitam o zoom automático do iPhone ao focar */
+  input,textarea,select{font-size:16px!important}
+
+  /* cabeçalho em duas linhas: marca + caminho / busca + botão */
+  .topo{gap:10px}
+  .topo-esq{width:100%;min-width:0}
+  .migalha{min-width:0;font-size:13px}
+  .migalha-atual{max-width:52vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topo-dir{width:100%}
+  .busca{flex:1;width:auto}
+  .btn-novo{padding:9px 14px;white-space:nowrap}
+
+  .cabecalho-pagina{padding-bottom:16px;margin-bottom:16px}
+  .cabecalho-pagina .titulo-projeto{flex:1 1 60%;min-width:0;overflow-wrap:anywhere}
+  .modal-card{padding:22px 18px;border-radius:20px}
+  .lg-card{padding:26px 18px;border-radius:20px}
+
+  /* tabela vira lista de cartões (o cabeçalho continua clicável para ordenar) */
+  .tabela-rolagem{overflow:visible}
+  table,thead,tbody{display:block;width:100%}
+  thead tr{display:flex;flex-wrap:wrap;gap:4px 16px;padding:12px 14px}
+  thead th{padding:0;border:0;font-size:11px}
+  thead th:last-child{display:none}
+  tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:12px 14px;
+    border-bottom:1px solid rgba(8,56,47,.6)}
+  tbody tr:last-child{border-bottom:0}
+  tbody td{padding:0;border:0}
+  tbody td:nth-child(1){order:1;flex:1 1 calc(100% - 50px);min-width:0;overflow-wrap:anywhere}
+  tbody td:nth-child(5){order:2;flex:0 0 40px;width:40px;text-align:right}
+  tbody td:nth-child(2),tbody td:nth-child(3),tbody td:nth-child(4){order:3}
+  tbody tr.em-edicao td:nth-child(5){order:4;flex:1 1 100%;width:auto;text-align:right}
+  .input-inline-tabela{max-width:none}
+
+  /* cards */
+  .card-controles{top:10px;right:10px}
+  .timeline-card.minimizado{padding:10px 16px}
+  .form-novo-card,.timeline-card{padding-bottom:78px}
+  .timeline-card:not(:has(.btn-enviar-card)){padding-bottom:20px}
+  .btn-enviar-card{right:16px;bottom:16px}
+  .label-file{padding:8px 14px}
+
+  /* rodapé */
+  .footer-bahub{padding:14px 12px;font-size:11px;gap:6px 12px;text-align:center}
+}
+
+/* alvos de toque maiores em telas sensíveis ao toque */
+@media(pointer:coarse){
+  .btn-ctrl{width:40px;height:36px}
+  .btn-voltar{width:40px;height:40px}
+  .btn-tabela-opcoes{padding:8px 12px}
+}
+
+/* ---- Celulares muito estreitos ---- */
+@media(max-width:380px){
+  .btn-novo span{display:none}
+  .btn-novo{padding:9px 12px}
+  .lg-card{padding:22px 14px}
+}
