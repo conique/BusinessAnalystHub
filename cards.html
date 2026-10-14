@@ -15,6 +15,7 @@
         <a href="index.html" class="btn-voltar">‹</a>
 
         <h1 class="titulo-projeto" id="header-titulo">A carregar...</h1>
+        <span class="tags-header" id="header-tags"></span>
 
         <span class="selo selo-andamento" id="header-status">Em andamento</span>
         <span class="pilula-area" id="header-area"></span>
@@ -285,6 +286,10 @@
                 'Em andamento';
 
             statusHeader.innerText = rotuloHeader;
+
+            document.getElementById('header-tags').innerHTML =
+
+                (projetoAtual.tags || []).map(htmlTagBolha).join('');
 
             document.getElementById('header-area').textContent =
                 projetoAtual.area || 'Projeto';

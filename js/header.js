@@ -1,3 +1,6 @@
+/* Cabeçalho padrão do BAHUB — usado em todas as páginas.
+   Cada página define (opcionalmente): window.aoBuscar(texto) e window.aoNovoRegistro().
+   Com data-simples="true" no <header>, mostra só a logo e o caminho (sem busca nem botão). */
 (function () {
     const topo = document.getElementById('topo');
     if (!topo) return;
@@ -20,6 +23,8 @@
             </button>
         </div>`}`;
 
+    /* Sistema de pastas: Workspace é a pasta base; dentro dela ficam os projetos.
+       Na pasta base, "Workspace" é o local atual. Dentro de um projeto, vira link. */
     const migalha = document.getElementById('migalha');
     function montarMigalha(nomePasta) {
         migalha.innerHTML = '';

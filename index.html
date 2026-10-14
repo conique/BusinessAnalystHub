@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>BAHUB</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#010d0a">
+    <title>BAHUB - Tabela</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -34,6 +36,8 @@
 
 <div id="conteudo-tabela" style="display:none;">
 
+    <div class="barra-ordem" id="barra-ordem"></div>
+
     <div class="tabela-rolagem">
     <table>
 
@@ -45,7 +49,7 @@
                     class="cabecalho-clicavel"
                     onclick="ordenarPor('nome')"
                 >
-                    Aa Nome
+                    Aa Título
                 </th>
 
                 <th
@@ -193,6 +197,16 @@ let db = lerBancoDeDados();
 let ordenacaoAtual = null;
 let direcaoOrdenacao = 1;
 
+/* A ordenação por coluna escolhida no cabeçalho fica lembrada ao recarregar a página. */
+const CHAVE_ORDENACAO = 'bahub_ordenacao';
+try {
+    const o = JSON.parse(localStorage.getItem(CHAVE_ORDENACAO));
+    if (o && ['nome', 'rotulo', 'area', 'prazo'].includes(o.tipo)) {
+        ordenacaoAtual = o.tipo;
+        direcaoOrdenacao = o.dir === -1 ? -1 : 1;
+    }
+} catch (e) { /* sem ordenação salva */ }
+
 
 const ordemRotulos = [
     'Em andamento',
@@ -294,8 +308,25 @@ function ordenarPor(tipo) {
 
     }
 
+    renderizarTabela();
 
-    db.sort((a, b) => {
+}
+
+
+/* Ordem de exibição: a personalizada (a do banco) ou a ordenação temporária por coluna. */
+function calcularOrdemVisual() {
+
+    const tipo = ordenacaoAtual;
+
+    if (!tipo) {
+        return db.map((_, i) => i);
+    }
+
+    return db.map((_, i) => i).sort((ia, ib) => {
+
+        const a = db[ia];
+        const b = db[ib];
+
 
         if (tipo === 'nome') {
 
@@ -404,11 +435,6 @@ function ordenarPor(tipo) {
 
     });
 
-
-    salvarBancoDeDados(db);
-
-    renderizarTabela();
-
 }
 
 
@@ -450,7 +476,9 @@ function renderizarTabela() {
     ).style.display = 'block';
 
 
-    db.forEach((projeto, index) => {
+    calcularOrdemVisual().forEach(index => {
+
+        const projeto = db[index];
 
         const tr =
             document.createElement('tr');
@@ -534,13 +562,15 @@ function renderizarTabela() {
 
                 <div class="col-nome">
 
+                    <span class="alca-arrastar" title="Arraste para mover">⠿</span>
+
                     <span>
                         📄
                     </span>
 
-                    <span>
-                        ${escapeHTML(projeto.nome)}
-                    </span>
+                    <span class="titulo-linha">${escapeHTML(projeto.nome)}</span>
+                    <span class="tags-linha">${(projeto.tags || []).map(htmlTagBolha).join('')}</span>
+                    <button type="button" class="btn-tag-mais" onclick="abrirPopTags(event, ${index})" title="Adicionar tag" aria-label="Adicionar tag">+</button>
 
                 </div>
 
@@ -913,7 +943,7 @@ function salvarEdicaoCompleta(index) {
     if (!nome) {
 
         alert(
-            'O nome do projeto não pode ser vazio.'
+            'O título do projeto não pode ser vazio.'
         );
 
         return;
@@ -980,6 +1010,246 @@ function deletarProjeto(index) {
 }
 
 
+/* ---------- Tags dos projetos: criar, escolher existente, cor e remover ---------- */
+const CORES_TAG = [
+    '#3b82f6', '#22c55e', '#ef4444', '#f97316', '#eab308', '#a855f7',
+    '#ec4899', '#14b8a6', '#6366f1', '#92400e', '#6b7280'
+];
+let popTags = null;
+
+function tagsExistentes() {
+    const mapa = new Map();
+    db.forEach(p => (p.tags || []).forEach(tg => {
+        const k = tg.nome.toLowerCase() + '|' + tg.cor;
+        if (!mapa.has(k)) mapa.set(k, { nome: tg.nome, cor: tg.cor });
+    }));
+    return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+function fecharPopTags() {
+    if (popTags) { popTags.el.remove(); popTags = null; }
+}
+
+function abrirPopTags(event, index) {
+    event.stopPropagation();
+    if (popTags && popTags.index === index) return fecharPopTags();
+    fecharPopTags();
+    const el = document.createElement('div');
+    el.className = 'pop-tags';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Tags do item');
+    popTags = { index, el, cor: CORES_TAG[0], livres: [] };
+    document.body.appendChild(el);
+
+    el.addEventListener('click', e => {
+        const b = e.target.closest('[data-acao]');
+        if (!b) return;
+        const acao = b.dataset.acao;
+        if (acao === 'cor') definirCorPop(b.dataset.cor);
+        else if (acao === 'remover') removerTag(Number(b.dataset.i));
+        else if (acao === 'usar') adicionarTag(popTags.livres[Number(b.dataset.i)]);
+        else if (acao === 'criar') criarTag();
+    });
+    el.addEventListener('input', e => {
+        if (e.target.id === 'tag-cor-custom') definirCorPop(e.target.value);
+    });
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.id === 'tag-nome') { e.preventDefault(); criarTag(); }
+    });
+
+    desenharPopTags();
+    posicionarPopTags();
+    const campo = el.querySelector('#tag-nome');
+    if (campo) campo.focus();
+}
+
+function desenharPopTags() {
+    const atuais = db[popTags.index].tags || [];
+    const livres = tagsExistentes().filter(tg => !atuais.some(a => a.nome.toLowerCase() === tg.nome.toLowerCase()));
+    popTags.livres = livres;
+    const estilo = c => `background:${c.cor};color:${corTextoTag(c.cor)}`;
+    popTags.el.innerHTML = `
+        ${atuais.length ? `<div class="pop-sec"><div class="pop-tit">Neste item</div><div class="pop-chips">
+            ${atuais.map((tg, i) => `<span class="tag-bolha tag-removivel" style="${estilo(tg)}">${escapeHTML(tg.nome)}<button type="button" data-acao="remover" data-i="${i}" aria-label="Remover tag ${escapeHTML(tg.nome)}">×</button></span>`).join('')}
+        </div></div>` : ''}
+        ${livres.length ? `<div class="pop-sec"><div class="pop-tit">Tags existentes</div><div class="pop-chips">
+            ${livres.map((tg, i) => `<button type="button" class="tag-bolha tag-escolher" data-acao="usar" data-i="${i}" style="${estilo(tg)}">${escapeHTML(tg.nome)}</button>`).join('')}
+        </div></div>` : ''}
+        <div class="pop-sec"><div class="pop-tit">Nova tag</div>
+            <input id="tag-nome" class="pop-input" maxlength="24" placeholder="Nome da tag" autocomplete="off">
+            <div class="pop-cores">
+                ${CORES_TAG.map(c => `<button type="button" class="cor-opcao${c === popTags.cor ? ' sel' : ''}" data-acao="cor" data-cor="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}
+                <label class="cor-opcao cor-custom${CORES_TAG.includes(popTags.cor) ? '' : ' sel'}" title="Outra cor"><input type="color" id="tag-cor-custom" value="${popTags.cor}"></label>
+            </div>
+            <button type="button" class="btn-salvar-inline pop-criar" data-acao="criar">Adicionar</button>
+        </div>`;
+}
+
+function definirCorPop(cor) {
+    popTags.cor = cor;
+    popTags.el.querySelectorAll('.cor-opcao').forEach(b => b.classList.remove('sel'));
+    const pre = popTags.el.querySelector(`.cor-opcao[data-cor="${cor}"]`);
+    (pre || popTags.el.querySelector('.cor-custom')).classList.add('sel');
+}
+
+function posicionarPopTags() {
+    const btn = document.querySelector(`#linha-projeto-${popTags.index} .btn-tag-mais`);
+    if (!btn) return fecharPopTags();
+    const r = btn.getBoundingClientRect(), el = popTags.el;
+    el.style.maxHeight = (window.innerHeight - 16) + 'px';
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+    let top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - 6 - h);
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+}
+
+function atualizarAposTag() {
+    salvarBancoDeDados(db);
+    renderizarTabela();
+    desenharPopTags();
+    posicionarPopTags();
+}
+
+function adicionarTag(tag) {
+    if (!tag) return;
+    const p = db[popTags.index];
+    p.tags = p.tags || [];
+    if (p.tags.some(x => x.nome.toLowerCase() === tag.nome.toLowerCase())) return;
+    p.tags.push({ nome: tag.nome, cor: tag.cor });
+    atualizarAposTag();
+}
+
+function criarTag() {
+    const campo = popTags.el.querySelector('#tag-nome');
+    const nome = campo.value.trim().slice(0, 24);
+    if (!nome) { campo.focus(); return; }
+    adicionarTag({ nome, cor: popTags.cor });
+    const novo = popTags.el.querySelector('#tag-nome');
+    if (novo) novo.focus();
+}
+
+function removerTag(i) {
+    const p = db[popTags.index];
+    (p.tags || []).splice(i, 1);
+    atualizarAposTag();
+}
+
+document.addEventListener('pointerdown', e => {
+    if (popTags && !popTags.el.contains(e.target) && !e.target.closest('.btn-tag-mais')) fecharPopTags();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPopTags(); });
+window.addEventListener('resize', () => { if (popTags) posicionarPopTags(); });
+window.addEventListener('scroll', () => { if (popTags) posicionarPopTags(); }, true);
+
+/* ---------- Ordem personalizada: segurar e arrastar as linhas ---------- */
+const NOMES_COLUNAS = { nome: 'Título', rotulo: 'Rótulo', area: 'Área', prazo: 'Prazo' };
+
+/* Transforma a ordenação que está na tela na ordem personalizada salva (vai para a nuvem). */
+function adotarOrdemAtual() {
+    db = calcularOrdemVisual().map(i => db[i]);
+    ordenacaoAtual = null;
+    direcaoOrdenacao = 1;
+    salvarBancoDeDados(db);
+    if (typeof enviarAgora === 'function') enviarAgora();
+    renderizarTabela();
+}
+
+function usarOrdemPersonalizada() {
+    ordenacaoAtual = null;
+    direcaoOrdenacao = 1;
+    renderizarTabela();
+}
+
+function atualizarBarraOrdem() {
+    if (ordenacaoAtual) localStorage.setItem(CHAVE_ORDENACAO, JSON.stringify({ tipo: ordenacaoAtual, dir: direcaoOrdenacao }));
+    else localStorage.removeItem(CHAVE_ORDENACAO);
+    document.querySelectorAll('.cabecalho-clicavel').forEach(th => {
+        const m = (th.getAttribute('onclick') || '').match(/'(\w+)'/);
+        th.dataset.ordem = m && m[1] === ordenacaoAtual ? (direcaoOrdenacao === 1 ? 'asc' : 'desc') : '';
+    });
+    const barra = document.getElementById('barra-ordem');
+    if (!barra) return;
+    barra.innerHTML = ordenacaoAtual
+        ? `<span>Visualização ordenada por <strong>${NOMES_COLUNAS[ordenacaoAtual]}</strong> ${direcaoOrdenacao === 1 ? '↑' : '↓'} · o arraste fica desativado</span>
+           <span class="barra-acoes"><button type="button" class="btn-ordem" onclick="adotarOrdemAtual()">Salvar como minha ordem</button><button type="button" class="btn-ordem" onclick="usarOrdemPersonalizada()">Voltar à ordem personalizada</button></span>`
+        : '<span>⠿ Ordem personalizada · segure uma linha e arraste para reorganizar</span>';
+}
+
+let arrasto = null;
+
+document.addEventListener('pointerdown', e => {
+    if (ordenacaoAtual || e.button > 0 || !e.target.closest) return;
+    const tr = e.target.closest('#corpo-tabela tr');
+    if (!tr || tr.classList.contains('em-edicao')) return;
+    if (e.target.closest('button, input, select, a, .col-acoes')) return;
+    if (e.pointerType === 'touch' && !e.target.closest('.alca-arrastar')) return;   // no toque, só pela alça
+    arrasto = { tr, id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false };
+});
+
+window.addEventListener('pointermove', e => {
+    if (!arrasto || e.pointerId !== arrasto.id) return;
+    if (!arrasto.ativo) {
+        if (Math.hypot(e.clientX - arrasto.x0, e.clientY - arrasto.y0) < 6) return;
+        arrasto.ativo = true;
+        arrasto.tr.classList.add('arrastando-origem');
+        document.body.classList.add('arrastando');
+        if (window.getSelection) window.getSelection().removeAllRanges();
+        const nome = arrasto.tr.querySelector('.titulo-linha');
+        const g = document.createElement('div');
+        g.className = 'ghost-arrasto';
+        g.textContent = nome ? nome.textContent.trim() : 'Projeto';
+        document.body.appendChild(g);
+        arrasto.ghost = g;
+    }
+    arrasto.ghost.style.left = (e.clientX + 14) + 'px';
+    arrasto.ghost.style.top = (e.clientY + 10) + 'px';
+
+    if (e.clientY < 70) window.scrollBy(0, -14);
+    else if (e.clientY > window.innerHeight - 70) window.scrollBy(0, 14);
+
+    document.querySelectorAll('#corpo-tabela tr.drop-acima, #corpo-tabela tr.drop-abaixo')
+        .forEach(r => r.classList.remove('drop-acima', 'drop-abaixo'));
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const alvo = el && el.closest ? el.closest('#corpo-tabela tr') : null;
+    if (!alvo || alvo === arrasto.tr) { arrasto.alvo = null; return; }
+    const r = alvo.getBoundingClientRect();
+    arrasto.alvo = alvo;
+    arrasto.depois = e.clientY > r.top + r.height / 2;
+    alvo.classList.add(arrasto.depois ? 'drop-abaixo' : 'drop-acima');
+});
+
+function finalizarArrasto(e, cancelar) {
+    if (!arrasto || e.pointerId !== arrasto.id) return;
+    const a = arrasto;
+    arrasto = null;
+    if (!a.ativo) return;
+    if (a.ghost) a.ghost.remove();
+    document.body.classList.remove('arrastando');
+    a.tr.classList.remove('arrastando-origem');
+    document.querySelectorAll('#corpo-tabela tr').forEach(r => r.classList.remove('drop-acima', 'drop-abaixo'));
+    window.__arrastou = true;                       // evita abrir o projeto ao soltar
+    setTimeout(() => { window.__arrastou = false; }, 0);
+    if (cancelar || !a.alvo) return;
+
+    const de = Number(a.tr.id.replace('linha-projeto-', ''));
+    const para = Number(a.alvo.id.replace('linha-projeto-', ''));
+    const [item] = db.splice(de, 1);
+    let pos = para > de ? para - 1 : para;
+    if (a.depois) pos += 1;
+    db.splice(pos, 0, item);
+    salvarBancoDeDados(db);                          // a ordem personalizada fica salva (e vai para a nuvem)
+    if (typeof enviarAgora === 'function') enviarAgora();
+    renderizarTabela();
+}
+window.addEventListener('pointerup', e => finalizarArrasto(e, false));
+window.addEventListener('pointercancel', e => finalizarArrasto(e, true));
+document.addEventListener('click', e => {
+    if (window.__arrastou) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+document.addEventListener('dragstart', e => { if (arrasto && arrasto.ativo) e.preventDefault(); });
+
 function aplicarBusca() {
     const termo = window.__termoBusca || '';
     document.querySelectorAll('#corpo-tabela tr').forEach(tr => {
@@ -989,7 +1259,7 @@ function aplicarBusca() {
 window.aoBuscar = t => { window.__termoBusca = t; aplicarBusca(); };
 window.aoNovoRegistro = abrirModal;
 const _renderizarTabelaBase = renderizarTabela;
-renderizarTabela = function () { _renderizarTabelaBase(); aplicarBusca(); };
+renderizarTabela = function () { _renderizarTabelaBase(); atualizarBarraOrdem(); aplicarBusca(); };
 
 renderizarTabela();
 
