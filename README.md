@@ -83,6 +83,8 @@ const SUPABASE_URL = 'https://SEU-PROJETO.supabase.co';
 const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANONIMA';
 ```
 
+Como este site é executado no navegador, tudo que estiver em `js/config.js` pode ser visto pelos visitantes. Use apenas a chave pública `anon`/`publishable` do Supabase, com as políticas de segurança do banco devidamente configuradas. Nunca coloque nesse arquivo chaves `service_role`, `secret` ou outras credenciais privadas; mantenha-as somente em um backend seguro.
+
 Além disso, o banco precisa ter a tabela/estrutura adequada para armazenar os dados do usuário e o payload do sistema.
 
 ## Fluxo de uso
