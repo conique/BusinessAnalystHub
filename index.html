@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#010d0a">
+    <meta name="theme-color" content="#111827">
     <title>BAHUB - Tabela</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
     <link rel="stylesheet" href="css/style.css">
@@ -183,7 +183,7 @@
 
 <footer class="footer-bahub">
     <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
-    <span id="status-nuvem" style="color:#34d399;font-weight:500"></span>
+    <span id="status-nuvem" style="color:#d1d5db;font-weight:500"></span>
     <span id="email-usuario" class="email-usuario"></span>
     <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
 </footer>
@@ -245,7 +245,7 @@ let opcoesRotulos =
 
 /* Garante todos os rótulos e a ordem padrão (também em dados já salvos no navegador). */
 const CORES_PADRAO_ROTULO = {
-    'Em andamento':'blue','Esperando':'purple','Atrasado':'red','A ser feito':'gray','Pronto':'green'
+    'Em andamento':'blue','Esperando':'#eab308','Atrasado':'red','A ser feito':'gray','Pronto':'green'
 };
 ordemRotulos.forEach(nome => {
     if (!opcoesRotulos.some(r => r.nome === nome)) {
@@ -256,6 +256,11 @@ opcoesRotulos.sort((a, b) => {
     const pa = ordemRotulos.indexOf(a.nome), pb = ordemRotulos.indexOf(b.nome);
     return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
 });
+const rotuloEsperando = opcoesRotulos.find(r => r.nome === 'Esperando');
+if (rotuloEsperando && rotuloEsperando.cor !== '#eab308') {
+    rotuloEsperando.cor = '#eab308';
+    localStorage.setItem('bahub_opcoes_rotulos', JSON.stringify(opcoesRotulos));
+}
 
 let opcoesArea =
     JSON.parse(
@@ -590,7 +595,7 @@ function renderizarTabela() {
 
                 <span
                     class="selo"
-                    style="background:${obterCorRotulo(rotulo)};--glow:${obterCorRotulo(rotulo)}"
+                    style="background:${obterCorRotulo(rotulo)};color:${rotulo === 'Esperando' ? '#000' : '#fff'};--glow:${obterCorRotulo(rotulo)}"
                 >
                     ${escapeHTML(rotulo)}
                 </span>

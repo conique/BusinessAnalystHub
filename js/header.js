@@ -98,7 +98,7 @@
         document.documentElement.dataset.tema = novo;
         try { localStorage.setItem('bahub_tema', novo); } catch (e) { /* sem armazenamento */ }
         const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.content = novo === 'claro' ? '#f1f5f9' : '#010d0a';
+        if (meta) meta.content = novo === 'claro' ? '#f1f5f9' : '#111827';
         atualizarBotaoTema();
     });
     atualizarBotaoTema();

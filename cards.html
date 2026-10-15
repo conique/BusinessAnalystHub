@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#010d0a">
+    <meta name="theme-color" content="#111827">
     <title>BAHUB - Timeline do Projeto</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
     <link rel="stylesheet" href="css/style.css">
@@ -85,7 +85,7 @@
 
     <footer class="footer-bahub">
     <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
-    <span id="status-nuvem" style="color:#34d399;font-weight:500"></span>
+    <span id="status-nuvem" style="color:#d1d5db;font-weight:500"></span>
     <span id="email-usuario" class="email-usuario"></span>
     <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
 </footer>
@@ -309,7 +309,7 @@
                 ) || [
                     { nome: 'Em andamento', cor: 'blue' },
                     { nome: 'Pronto', cor: 'green' },
-            { nome: 'Esperando', cor: 'purple' },
+                    { nome: 'Esperando', cor: '#eab308' },
                     { nome: 'Atrasado', cor: 'red' },
                     { nome: 'A ser feito', cor: 'gray' }
                 ];
@@ -320,8 +320,11 @@
                 );
 
             const MAPA_CORES = {blue:'#183cf5',green:'#059669',red:'#dc2626',gray:'#4b5563',purple:'#9333ea'};
-            const corBruta = rotuloEncontrado ? rotuloEncontrado.cor : 'blue';
+            const corBruta = rotuloHeader === 'Esperando'
+                ? '#eab308'
+                : rotuloEncontrado ? rotuloEncontrado.cor : 'blue';
             statusHeader.style.backgroundColor = MAPA_CORES[corBruta] || corBruta;
+            statusHeader.style.color = rotuloHeader === 'Esperando' ? '#000' : '#fff';
             statusHeader.style.setProperty('--glow', MAPA_CORES[corBruta] || corBruta);
 
             const feed =
