@@ -42,7 +42,6 @@ BusinessAnalystHub-main/
 │   ├── config.js
 │   ├── db.js
 │   └── header.js
-├── bg-header.png
 ├── cards.html
 ├── index.html
 ├── README.md
