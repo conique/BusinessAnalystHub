@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#010d0a">
     <title>BAHUB - Timeline do Projeto</title>
+    <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -1702,7 +1703,22 @@
         const _renderizarTimelineBase = renderizarTimeline;
 renderizarTimeline = async function () {
     await _renderizarTimelineBase();
-    if (window.BAHUB_Topo) BAHUB_Topo.definirAtual(projetoAtual.nome);
+    if (window.BAHUB_Topo) {
+        const cadeia = [];
+        let pid = projetoAtual.pai, guarda = 0;
+        while (pid && guarda++ < 50) {
+            const f = db.find(x => x.tipo === 'pasta' && x.id === pid);
+            if (!f) break;
+            cadeia.unshift(f);
+            pid = f.pai;
+        }
+        BAHUB_Topo.definirCaminho([
+            ...cadeia.map(f => ({ nome: f.nome, pasta: f.id, href: 'index.html?pasta=' + f.id })),
+            { nome: projetoAtual.nome }
+        ]);
+        const voltar = document.querySelector('.btn-voltar');
+        if (voltar && projetoAtual.pai) voltar.href = 'index.html?pasta=' + projetoAtual.pai;
+    }
     sincronizarFormulario();
     sincronizarMinimizar();
     ajustarTodasLegendas();

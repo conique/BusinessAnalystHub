@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#010d0a">
     <title>BAHUB - Tabela</title>
+    <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -197,6 +198,8 @@ let db = lerBancoDeDados();
 let ordenacaoAtual = null;
 let direcaoOrdenacao = 1;
 
+let pastaAtual = new URLSearchParams(location.search).get('pasta') || null;
+
 /* A ordenação por coluna escolhida no cabeçalho fica lembrada ao recarregar a página. */
 const CHAVE_ORDENACAO = 'bahub_ordenacao';
 try {
@@ -318,11 +321,13 @@ function calcularOrdemVisual() {
 
     const tipo = ordenacaoAtual;
 
+    const nivel = db.map((_, i) => i).filter(i => (db[i].pai || null) === (pastaAtual || null));
+
     if (!tipo) {
-        return db.map((_, i) => i);
+        return nivel;
     }
 
-    return db.map((_, i) => i).sort((ia, ib) => {
+    return nivel.sort((ia, ib) => {
 
         const a = db[ia];
         const b = db[ib];
@@ -476,7 +481,11 @@ function renderizarTabela() {
     ).style.display = 'block';
 
 
-    calcularOrdemVisual().forEach(index => {
+    validarPastaAtual();
+    if (pastaAtual) tbody.appendChild(criarLinhaVoltar());
+    const nivelAtual = calcularOrdemVisual();
+    if (pastaAtual && !nivelAtual.length) tbody.appendChild(criarLinhaVazia());
+    nivelAtual.forEach(index => {
 
         const projeto = db[index];
 
@@ -486,6 +495,7 @@ function renderizarTabela() {
 
         tr.id =
             `linha-projeto-${index}`;
+        if (projeto.tipo === 'pasta') tr.className = 'linha-pasta';
 
 
         tr.onclick = e => {
@@ -514,8 +524,8 @@ function renderizarTabela() {
                 )
             ) {
 
-                location.href =
-                    `cards.html?id=${index}`;
+                if (projeto.tipo === 'pasta') irParaPasta(projeto.id);
+                else location.href = `cards.html?id=${index}`;
 
             }
 
@@ -564,11 +574,10 @@ function renderizarTabela() {
 
                     <span class="alca-arrastar" title="Arraste para mover">⠿</span>
 
-                    <span>
-                        📄
-                    </span>
+                    <span>${projeto.tipo === 'pasta' ? '📁' : '📄'}</span>
 
                     <span class="titulo-linha">${escapeHTML(projeto.nome)}</span>
+                    ${projeto.tipo === 'pasta' ? `<span class="pasta-contagem">· ${contarFilhos(projeto.id)} ${contarFilhos(projeto.id) === 1 ? 'item' : 'itens'}</span>` : ''}
                     <span class="tags-linha">${(projeto.tags || []).map(htmlTagBolha).join('')}</span>
                     <button type="button" class="btn-tag-mais" onclick="abrirPopTags(event, ${index})" title="Adicionar tag" aria-label="Adicionar tag">+</button>
 
@@ -626,7 +635,7 @@ function renderizarTabela() {
 
 
                     <button
-                        onclick="deletarProjeto(${index})"
+                        onclick="${projeto.tipo === 'pasta' ? 'excluirPasta' : 'deletarProjeto'}(${index})"
                         style="color:#ff4d4d"
                     >
                         Deletar
@@ -781,6 +790,7 @@ async function salvarNovoProjeto() {
 
         prazo:'---',
 
+        pai: pastaAtual || null,
         cards:[]
 
     });
@@ -1144,11 +1154,118 @@ window.addEventListener('resize', () => { if (popTags) posicionarPopTags(); });
 window.addEventListener('scroll', () => { if (popTags) posicionarPopTags(); }, true);
 
 /* ---------- Ordem personalizada: segurar e arrastar as linhas ---------- */
+/* ---------- Pastas: criar, abrir, mover (arrastando), renomear e excluir ---------- */
+function pastaPorId(id) { return id ? db.find(x => x.tipo === 'pasta' && x.id === id) : null; }
+function contarFilhos(id) { return db.filter(x => (x.pai || null) === id).length; }
+function validarPastaAtual() { if (pastaAtual && !pastaPorId(pastaAtual)) pastaAtual = null; }
+
+function caminhoDaPasta(id) {
+    const cadeia = [];
+    let atual = pastaPorId(id), guarda = 0;
+    while (atual && guarda++ < 50) { cadeia.unshift(atual); atual = pastaPorId(atual.pai); }
+    return cadeia;
+}
+/* true se "filhoId" está dentro de "paiId" (em qualquer nível) */
+function ehDescendente(paiId, filhoId) {
+    let x = pastaPorId(filhoId), guarda = 0;
+    while (x && guarda++ < 50) { if ((x.pai || null) === paiId) return true; x = pastaPorId(x.pai); }
+    return false;
+}
+
+function atualizarCaminho() {
+    if (!window.BAHUB_Topo) return;
+    const cadeia = caminhoDaPasta(pastaAtual);
+    BAHUB_Topo.definirCaminho(cadeia.map((f, i) => ({
+        nome: f.nome, pasta: f.id, href: i < cadeia.length - 1 ? 'index.html?pasta=' + f.id : null
+    })));
+}
+
+function irParaPasta(id, historico = true) {
+    pastaAtual = id || null;
+    if (historico) {
+        try {
+            const u = new URL(location.href);
+            if (pastaAtual) u.searchParams.set('pasta', pastaAtual); else u.searchParams.delete('pasta');
+            history.pushState({}, '', u);
+        } catch (e) { /* sem histórico (ex.: arquivo local) */ }
+    }
+    window.__termoBusca = '';
+    const campo = document.getElementById('topo-busca');
+    if (campo) campo.value = '';
+    renderizarTabela();
+}
+window.addEventListener('popstate', () => {
+    pastaAtual = new URLSearchParams(location.search).get('pasta') || null;
+    renderizarTabela();
+});
+document.addEventListener('click', e => {                 // links do caminho navegam sem recarregar
+    const a = e.target.closest && e.target.closest('#topo a[data-pasta]');
+    if (!a) return;
+    e.preventDefault();
+    irParaPasta(a.dataset.pasta || null);
+});
+
+function salvarPastas() {
+    salvarBancoDeDados(db);
+    if (typeof enviarAgora === 'function') enviarAgora();
+    renderizarTabela();
+}
+function criarPasta() {
+    db.push({
+        tipo: 'pasta',
+        id: 'f_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        nome: 'Nova pasta',
+        rotulo: opcoesRotulos[0]?.nome || 'Em andamento',
+        area: opcoesArea.includes('Gerais') ? 'Gerais' : opcoesArea[0],
+        prazo: '---',
+        pai: pastaAtual || null
+    });
+    salvarPastas();
+}
+function excluirPasta(index) {
+    const p = db[index], n = contarFilhos(p.id);
+    const msg = n
+        ? `Excluir a pasta "${p.nome}"?\nOs ${n} item(ns) dentro dela serão movidos para o nível acima. Nada é apagado.`
+        : `Excluir a pasta vazia "${p.nome}"?`;
+    if (!confirm(msg)) return;
+    db.forEach(x => { if (x.pai === p.id) x.pai = p.pai || null; });
+    db.splice(index, 1);
+    salvarPastas();
+}
+function moverParaPasta(de, pastaId) {
+    const item = db[de];
+    if (!item) return;
+    if (item.tipo === 'pasta' && (item.id === pastaId || ehDescendente(item.id, pastaId))) return;
+    db.splice(de, 1);
+    item.pai = pastaId || null;
+    db.push(item);
+    salvarPastas();
+}
+
+function criarLinhaVoltar() {
+    const pai = (pastaPorId(pastaAtual) || {}).pai || null;
+    const nomePai = pai ? pastaPorId(pai).nome : 'Workspace';
+    const tr = document.createElement('tr');
+    tr.className = 'linha-voltar';
+    tr.dataset.dropPasta = pai || '';
+    tr.onclick = () => irParaPasta(pai);
+    tr.innerHTML = `<td colspan="5"><div class="col-nome"><span>↰</span><span>Voltar para ${escapeHTML(nomePai)}</span></div></td>`;
+    return tr;
+}
+function criarLinhaVazia() {
+    const tr = document.createElement('tr');
+    tr.className = 'linha-vazia';
+    tr.innerHTML = '<td colspan="5">Pasta vazia. Crie uma página aqui ou arraste itens para dentro dela.</td>';
+    return tr;
+}
+
 const NOMES_COLUNAS = { nome: 'Título', rotulo: 'Rótulo', area: 'Área', prazo: 'Prazo' };
 
 /* Transforma a ordenação que está na tela na ordem personalizada salva (vai para a nuvem). */
 function adotarOrdemAtual() {
-    db = calcularOrdemVisual().map(i => db[i]);
+    const posicoes = db.map((_, i) => i).filter(i => (db[i].pai || null) === (pastaAtual || null));
+    const ordenados = calcularOrdemVisual().map(i => db[i]);
+    posicoes.forEach((pos, k) => { db[pos] = ordenados[k]; });
     ordenacaoAtual = null;
     direcaoOrdenacao = 1;
     salvarBancoDeDados(db);
@@ -1174,7 +1291,7 @@ function atualizarBarraOrdem() {
     barra.innerHTML = ordenacaoAtual
         ? `<span>Visualização ordenada por <strong>${NOMES_COLUNAS[ordenacaoAtual]}</strong> ${direcaoOrdenacao === 1 ? '↑' : '↓'} · o arraste fica desativado</span>
            <span class="barra-acoes"><button type="button" class="btn-ordem" onclick="adotarOrdemAtual()">Salvar como minha ordem</button><button type="button" class="btn-ordem" onclick="usarOrdemPersonalizada()">Voltar à ordem personalizada</button></span>`
-        : '<span>⠿ Ordem personalizada · segure uma linha e arraste para reorganizar</span>';
+        : '<span>⠿ Ordem personalizada · arraste para reorganizar ou solte sobre uma pasta</span>';
 }
 
 let arrasto = null;
@@ -1182,7 +1299,7 @@ let arrasto = null;
 document.addEventListener('pointerdown', e => {
     if (ordenacaoAtual || e.button > 0 || !e.target.closest) return;
     const tr = e.target.closest('#corpo-tabela tr');
-    if (!tr || tr.classList.contains('em-edicao')) return;
+    if (!tr || tr.classList.contains('em-edicao') || !tr.id.startsWith('linha-projeto-')) return;
     if (e.target.closest('button, input, select, a, .col-acoes')) return;
     if (e.pointerType === 'touch' && !e.target.closest('.alca-arrastar')) return;   // no toque, só pela alça
     arrasto = { tr, id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false };
@@ -1209,14 +1326,33 @@ window.addEventListener('pointermove', e => {
     if (e.clientY < 70) window.scrollBy(0, -14);
     else if (e.clientY > window.innerHeight - 70) window.scrollBy(0, 14);
 
-    document.querySelectorAll('#corpo-tabela tr.drop-acima, #corpo-tabela tr.drop-abaixo')
-        .forEach(r => r.classList.remove('drop-acima', 'drop-abaixo'));
+    document.querySelectorAll('.drop-acima, .drop-abaixo, .drop-dentro')
+        .forEach(r => r.classList.remove('drop-acima', 'drop-abaixo', 'drop-dentro'));
+    arrasto.alvo = null;
+    arrasto.dentro = undefined;
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const alvo = el && el.closest ? el.closest('#corpo-tabela tr') : null;
-    if (!alvo || alvo === arrasto.tr) { arrasto.alvo = null; return; }
+    if (!el || !el.closest) return;
+    const origem = db[Number(arrasto.tr.id.replace('linha-projeto-', ''))];
+    const podeIrPara = pastaId => !(origem.tipo === 'pasta' && (origem.id === pastaId || ehDescendente(origem.id, pastaId)))
+        && (origem.pai || null) !== (pastaId || null);
+
+    const zona = el.closest('[data-drop-pasta]');          // linha "voltar", Workspace e pastas do caminho
+    if (zona) {
+        const id = zona.dataset.dropPasta || null;
+        if (podeIrPara(id)) { arrasto.dentro = id; zona.classList.add('drop-dentro'); }
+        return;
+    }
+    const alvo = el.closest('#corpo-tabela tr');
+    if (!alvo || alvo === arrasto.tr || !alvo.id.startsWith('linha-projeto-')) return;
     const r = alvo.getBoundingClientRect();
+    const rel = (e.clientY - r.top) / r.height;
+    if (alvo.classList.contains('linha-pasta') && rel > .25 && rel < .75) {   // meio da pasta = colocar dentro
+        const idPasta = db[Number(alvo.id.replace('linha-projeto-', ''))].id;
+        if (podeIrPara(idPasta)) { arrasto.dentro = idPasta; alvo.classList.add('drop-dentro'); }
+        return;
+    }
     arrasto.alvo = alvo;
-    arrasto.depois = e.clientY > r.top + r.height / 2;
+    arrasto.depois = rel > .5;
     alvo.classList.add(arrasto.depois ? 'drop-abaixo' : 'drop-acima');
 });
 
@@ -1228,12 +1364,13 @@ function finalizarArrasto(e, cancelar) {
     if (a.ghost) a.ghost.remove();
     document.body.classList.remove('arrastando');
     a.tr.classList.remove('arrastando-origem');
-    document.querySelectorAll('#corpo-tabela tr').forEach(r => r.classList.remove('drop-acima', 'drop-abaixo'));
+    document.querySelectorAll('.drop-acima, .drop-abaixo, .drop-dentro').forEach(r => r.classList.remove('drop-acima', 'drop-abaixo', 'drop-dentro'));
     window.__arrastou = true;                       // evita abrir o projeto ao soltar
     setTimeout(() => { window.__arrastou = false; }, 0);
-    if (cancelar || !a.alvo) return;
-
+    if (cancelar) return;
     const de = Number(a.tr.id.replace('linha-projeto-', ''));
+    if (a.dentro !== undefined) { moverParaPasta(de, a.dentro); return; }
+    if (!a.alvo) return;
     const para = Number(a.alvo.id.replace('linha-projeto-', ''));
     const [item] = db.splice(de, 1);
     let pos = para > de ? para - 1 : para;
@@ -1258,8 +1395,9 @@ function aplicarBusca() {
 }
 window.aoBuscar = t => { window.__termoBusca = t; aplicarBusca(); };
 window.aoNovoRegistro = abrirModal;
+window.aoNovaPasta = criarPasta;
 const _renderizarTabelaBase = renderizarTabela;
-renderizarTabela = function () { _renderizarTabelaBase(); atualizarBarraOrdem(); aplicarBusca(); };
+renderizarTabela = function () { _renderizarTabelaBase(); atualizarBarraOrdem(); atualizarCaminho(); aplicarBusca(); };
 
 renderizarTabela();
 
