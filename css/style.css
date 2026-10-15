@@ -138,7 +138,9 @@ tbody tr.em-edicao{background:#37373d;cursor:default}
 .seletor-tipo,.card-tipo-tag{display:inline-block;background:var(--pilula);color:#fff;border:0;border-radius:9999px;
   padding:5px 16px;font-size:12px;font-weight:600}
 .seletor-tipo{font-size:13px;cursor:pointer;margin-bottom:12px}
-.card-tipo-tag{margin-bottom:12px}
+.seletor-tipo,.seletor-tipo option{background:#f8fafc;color:#1e293b}
+.seletor-tipo{border:1px solid #cbd5e1}
+.card-tipo-tag{margin-bottom:12px;background:#f8fafc;color:#1e293b}
 .input-titulo-card{display:block;width:100%;border:0;border-bottom:1px solid var(--card-borda);padding:6px 0;margin-bottom:12px;
   font-size:20px;font-weight:500;color:var(--card-titulo);background:transparent}
 .input-titulo-card::placeholder{color:#858585}
@@ -296,8 +298,8 @@ textarea.input-legenda-card{resize:none;overflow:hidden;min-height:48px;transiti
   transition:filter .15s,transform .15s}
 .btn-mais-card:hover{filter:brightness(1.12)}
 .btn-mais-card:active{transform:scale(.94)}
-.btn-mais-card svg{transition:transform .25s ease}
-.btn-mais-card.aberto svg{transform:rotate(45deg)}
+.btn-mais-card svg path{transition:opacity .15s}
+.btn-mais-card.aberto svg path:nth-child(2){opacity:0}
 @media(max-width:1060px){.btn-mais-card{right:0;top:-4px;width:38px;height:38px}}
 @media(prefers-reduced-motion:reduce){.form-novo-card.entrando,.form-novo-card.fechando{animation:none}}
 
@@ -326,6 +328,14 @@ textarea.input-legenda-card{resize:none;overflow:hidden;min-height:48px;transiti
 @media(max-width:1060px){
   .timeline-card>.btn-semaforo{top:-30px;right:12px}
   .timeline-item:first-child .timeline-card>.btn-semaforo{top:-30px;right:56px}
+}
+.form-novo-card>.btn-mais-card{top:8px;right:-64px}
+#form-novo-card:not([hidden]) + #feed-timeline .timeline-item:first-child .timeline-card>.btn-semaforo{
+  top:16px;right:-52px}
+@media(max-width:1060px){
+  .form-novo-card>.btn-mais-card{top:8px;right:0}
+  #form-novo-card:not([hidden]) + #feed-timeline .timeline-item:first-child .timeline-card>.btn-semaforo{
+    top:16px;right:12px}
 }
 @media(prefers-reduced-motion:reduce){.timeline-card.anim-min{animation:none}}
 
@@ -549,6 +559,10 @@ html[data-tema="claro"] .timeline-card .nota-corpo p{color:#475569}
 html[data-tema="claro"] .nota-nova input:focus{background:#fff}
 html[data-tema="claro"] .btn-ctrl{color:#475569}
 html[data-tema="claro"] .btn-ctrl:hover{background:#f1f5f9;color:#0f172a}
+html[data-tema="claro"] .seletor-tipo,html[data-tema="claro"] .seletor-tipo option{
+  background:#252526;color:#f8fafc}
+html[data-tema="claro"] .seletor-tipo{border-color:#3e3e42}
+html[data-tema="claro"] .card-tipo-tag{background:#2d2d30;color:#fff}
 
 /* rodapé e login */
 html[data-tema="claro"] .footer-bahub{background:#fff;border-top-color:#e2e8f0;color:#64748b}

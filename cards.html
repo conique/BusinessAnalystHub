@@ -206,7 +206,15 @@
                 }, 220);
             }
             const b = document.querySelector('.btn-mais-card');
-            if (b) { b.classList.toggle('aberto', abrir); b.setAttribute('aria-expanded', String(abrir)); }
+            const primeiro = document.querySelector('#feed-timeline .timeline-item');
+            const destino = abrir ? form : primeiro;
+            if (b && destino) {
+                destino.appendChild(b);
+                b.classList.toggle('aberto', abrir);
+                b.title = abrir ? 'Fechar novo card' : 'Novo card';
+                b.setAttribute('aria-label', b.title);
+                b.setAttribute('aria-expanded', String(abrir));
+            }
         }
 
         function sincronizarFormulario() {
@@ -219,15 +227,19 @@
                 return;
             }
             if (!form.classList.contains('fechando')) form.hidden = !formularioAberto;
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'btn-mais-card' + (formularioAberto ? ' aberto' : '');
-            b.title = 'Novo card';
-            b.setAttribute('aria-label', 'Novo card');
+            let b = document.querySelector('.btn-mais-card');
+            if (!b) {
+                b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'btn-mais-card';
+                b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>';
+                b.onclick = () => abrirFecharFormulario(!formularioAberto, true);
+            }
+            b.classList.toggle('aberto', formularioAberto);
+            b.title = formularioAberto ? 'Fechar novo card' : 'Novo card';
+            b.setAttribute('aria-label', b.title);
             b.setAttribute('aria-expanded', String(formularioAberto));
-            b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>';
-            b.onclick = () => abrirFecharFormulario(!formularioAberto, true);
-            primeiro.appendChild(b);
+            (formularioAberto ? form : primeiro).appendChild(b);
         }
 
         /* Campos de legenda crescem junto com o texto (Enter pula linha). */
