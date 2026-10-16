@@ -245,7 +245,7 @@ let opcoesRotulos =
 
 /* Garante todos os rótulos e a ordem padrão (também em dados já salvos no navegador). */
 const CORES_PADRAO_ROTULO = {
-    'Em andamento':'blue','Esperando':'#eab308','Atrasado':'red','A ser feito':'gray','Pronto':'green'
+    'Em andamento':'blue','Esperando':'#a855f7','Atrasado':'red','A ser feito':'gray','Pronto':'green'
 };
 ordemRotulos.forEach(nome => {
     if (!opcoesRotulos.some(r => r.nome === nome)) {
@@ -257,8 +257,8 @@ opcoesRotulos.sort((a, b) => {
     return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
 });
 const rotuloEsperando = opcoesRotulos.find(r => r.nome === 'Esperando');
-if (rotuloEsperando && rotuloEsperando.cor !== '#eab308') {
-    rotuloEsperando.cor = '#eab308';
+if (rotuloEsperando && rotuloEsperando.cor !== '#a855f7') {
+    rotuloEsperando.cor = '#a855f7';
     localStorage.setItem('bahub_opcoes_rotulos', JSON.stringify(opcoesRotulos));
 }
 
@@ -289,7 +289,7 @@ function salvarOpcoesGlobais() {
 }
 
 
-const MAPA_CORES={blue:'#183cf5',green:'#059669',red:'#dc2626',gray:'#4b5563',purple:'#9333ea'};
+const MAPA_CORES={blue:'#0ea5e9',green:'#10b981',red:'#dc2626',gray:'#4b5563',purple:'#a855f7'};
 function obterCorRotulo(nome) {
 
     const r =
@@ -595,7 +595,7 @@ function renderizarTabela() {
 
                 <span
                     class="selo"
-                    style="background:${obterCorRotulo(rotulo)};color:${rotulo === 'Esperando' ? '#000' : '#fff'};--glow:${obterCorRotulo(rotulo)}"
+                    style="--glow:${obterCorRotulo(rotulo)}"
                 >
                     ${escapeHTML(rotulo)}
                 </span>

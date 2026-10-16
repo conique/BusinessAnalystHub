@@ -55,6 +55,11 @@ button,input,textarea,select{font-family:inherit}
 
 /* ---------- Selos / pílulas ---------- */
 .selo{display:inline-flex;align-items:center;padding:4px 14px;border-radius:9999px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+#conteudo-tabela .selo{padding:5px 14px;border:1px solid color-mix(in srgb,var(--glow) 48%,transparent);
+  border-radius:9999px;background:color-mix(in srgb,var(--glow) 14%,transparent);
+  color:color-mix(in srgb,var(--glow) 35%,#fff);font-size:13px;font-weight:600;white-space:nowrap}
+#conteudo-tabela .selo,#conteudo-tabela .pilula-area{display:inline-flex;align-items:center;box-sizing:border-box;
+  min-height:28px;padding:4px 14px;font-size:13px;font-weight:600}
 .pilula-area{display:inline-block;padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:500;
   color:#cbd5e1;background:var(--bg);border:1px solid var(--borda)}
 
@@ -523,6 +528,9 @@ html[data-tema="claro"] .barra-ordem strong{color:#0f172a}
 html[data-tema="claro"] .btn-ordem{color:#475569;border-color:#cbd5e1}
 html[data-tema="claro"] .btn-ordem:hover{background:#f1f5f9;color:#0f172a}
 html[data-tema="claro"] .pilula-area,html[data-tema="claro"] .pilula-prazo{background:#f1f5f9;border-color:#e2e8f0;color:#475569}
+html[data-tema="claro"] #conteudo-tabela .selo{background:color-mix(in srgb,var(--glow) 12%,#fff);
+  border-color:color-mix(in srgb,var(--glow) 45%,#fff);color:color-mix(in srgb,var(--glow) 78%,#111827)}
+html[data-tema="claro"] #conteudo-tabela .pilula-area{background:#f1f5f9;border-color:#d5dfeb;color:#334155}
 html[data-tema="claro"] .input-inline-tabela,html[data-tema="claro"] .select-inline-tabela{background:#fff;border-color:#cbd5e1;color:#0f172a}
 html[data-tema="claro"] .btn-tabela-opcoes{color:#64748b}
 html[data-tema="claro"] .alca-arrastar{color:#94a3b8}
