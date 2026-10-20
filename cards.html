@@ -19,7 +19,7 @@
         <span class="tags-header" id="header-tags"></span>
         <button type="button" class="btn-tag-mais" id="btn-tag-mais" title="Adicionar tag" aria-label="Adicionar tag">+</button>
 
-        <span class="selo selo-andamento" id="header-status">Em andamento</span>
+        <span class="selo selo-rotulo" id="header-status">Em andamento</span>
         <span class="pilula-area" id="header-area"></span>
         <span class="pilula-prazo" id="header-prazo" hidden></span>
         <button type="button" class="btn-editar-dados" id="btn-editar-dados" title="Editar dados" aria-label="Editar dados">
@@ -531,7 +531,7 @@
                 ) || [
                     { nome: 'Em andamento', cor: 'blue' },
                     { nome: 'Pronto', cor: 'green' },
-                    { nome: 'Esperando', cor: '#eab308' },
+                    { nome: 'Esperando', cor: '#a855f7' },
                     { nome: 'Atrasado', cor: 'red' },
                     { nome: 'A ser feito', cor: 'gray' }
                 ];
@@ -541,12 +541,8 @@
                     item => item.nome === rotuloHeader
                 );
 
-            const MAPA_CORES = {blue:'#183cf5',green:'#059669',red:'#dc2626',gray:'#4b5563',purple:'#9333ea'};
-            const corBruta = rotuloHeader === 'Esperando'
-                ? '#eab308'
-                : rotuloEncontrado ? rotuloEncontrado.cor : 'blue';
-            statusHeader.style.backgroundColor = MAPA_CORES[corBruta] || corBruta;
-            statusHeader.style.color = rotuloHeader === 'Esperando' ? '#000' : '#fff';
+            const MAPA_CORES = {blue:'#0ea5e9',green:'#10b981',red:'#dc2626',gray:'#4b5563',purple:'#a855f7'};
+            const corBruta = rotuloEncontrado ? rotuloEncontrado.cor : 'blue';
             statusHeader.style.setProperty('--glow', MAPA_CORES[corBruta] || corBruta);
 
             const feed =
