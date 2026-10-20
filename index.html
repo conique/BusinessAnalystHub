@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#111827">
-    <title>BAHUB - Tabela</title>
+    <title>BAHUB - Tab</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -34,6 +34,8 @@
 
 </div>
 
+
+<div class="kanban" id="kanban" hidden></div>
 
 <div id="conteudo-tabela" style="display:none;">
 
@@ -199,6 +201,8 @@ let ordenacaoAtual = null;
 let direcaoOrdenacao = 1;
 
 let pastaAtual = new URLSearchParams(location.search).get('pasta') || null;
+const CHAVE_VISAO = 'bahub_visao';
+let visaoAtual = localStorage.getItem(CHAVE_VISAO) === 'kanban' ? 'kanban' : 'tabela';
 
 /* A ordenação por coluna escolhida no cabeçalho fica lembrada ao recarregar a página. */
 const CHAVE_ORDENACAO = 'bahub_ordenacao';
@@ -1108,7 +1112,7 @@ function definirCorPop(cor) {
 }
 
 function posicionarPopTags() {
-    const btn = document.querySelector(`#linha-projeto-${popTags.index} .btn-tag-mais`);
+    const btn = document.querySelector(`${visaoAtual === 'kanban' ? '#kb-card-' : '#linha-projeto-'}${popTags.index} .btn-tag-mais`);
     if (!btn) return fecharPopTags();
     const r = btn.getBoundingClientRect(), el = popTags.el;
     el.style.maxHeight = (window.innerHeight - 16) + 'px';
@@ -1159,6 +1163,261 @@ window.addEventListener('resize', () => { if (popTags) posicionarPopTags(); });
 window.addEventListener('scroll', () => { if (popTags) posicionarPopTags(); }, true);
 
 /* ---------- Ordem personalizada: segurar e arrastar as linhas ---------- */
+/* ---------- Visão Kanban: colunas por rótulo, arraste entre colunas muda o rótulo ---------- */
+function mudarVisao(v) {
+    visaoAtual = v;
+    localStorage.setItem(CHAVE_VISAO, v);
+    renderizarTabela();
+}
+
+function aplicarVisao() {
+    const kb = document.getElementById('kanban');
+    const caixa = document.getElementById('conteudo-tabela');
+    const slot = document.getElementById('topo-visao');
+    if (!kb || !caixa) return;
+    const vazio = !db.length;
+    const kanban = visaoAtual === 'kanban';
+    if (slot) {
+        slot.hidden = vazio;
+        slot.innerHTML = `<span class="visao-toggle" role="group" aria-label="Visualização">
+            <button type="button" class="${visaoAtual === 'tabela' ? 'on' : ''}" onclick="mudarVisao('tabela')">Tabela</button>
+            <button type="button" class="${kanban ? 'on' : ''}" onclick="mudarVisao('kanban')" title="Colunas por rótulo. Arraste os cards entre colunas e arraste o título da coluna para reordenar">Kanban</button></span>`;
+    }
+    kb.hidden = vazio || !kanban;
+    if (kanban && !vazio) {
+        caixa.style.display = 'none';
+        renderizarKanban();
+    }
+}
+
+function htmlCardKanban(i) {
+    const p = db[i], pasta = p.tipo === 'pasta';
+    const cor = obterCorRotulo(p.rotulo || opcoesRotulos[0].nome);
+    const prazoBruto = p.prazo && p.prazo !== '---' ? p.prazo : '';
+    const prazo = /^\d{4}-\d{2}-\d{2}$/.test(prazoBruto) ? prazoBruto.split('-').reverse().join('/') : prazoBruto;
+    const n = pasta ? contarFilhos(p.id) : 0;
+    return `<article class="kb-card${pasta ? ' kb-pasta' : ''}" id="kb-card-${i}" data-idx="${i}" style="--cor-card:${cor}">
+        <div class="kb-card-topo">
+            <span class="kb-titulo">${pasta ? '📁 ' : ''}${escapeHTML(p.nome)}</span>
+            <span class="alca-arrastar kb-alca" title="Arraste para mover">⠿</span>
+        </div>
+        <div class="kb-meta">
+            ${p.area ? `<span class="pilula-area">${escapeHTML(p.area)}</span>` : ''}
+            ${prazo ? `<span class="kb-prazo">📅 ${escapeHTML(prazo)}</span>` : ''}
+            ${pasta ? `<span class="pasta-contagem">${n} ${n === 1 ? 'item' : 'itens'}</span>` : ''}
+        </div>
+        <div class="kb-tags">${(p.tags || []).map(htmlTagBolha).join('')}<button type="button" class="btn-tag-mais" onclick="abrirPopTags(event, ${i})" title="Adicionar tag" aria-label="Adicionar tag">+</button></div>
+    </article>`;
+}
+
+const CHAVE_COLUNAS = 'bahub_kanban_colunas';
+function ordemColunas() {
+    const base = opcoesRotulos.map(r => r.nome);
+    let salvo = [];
+    try { salvo = JSON.parse(localStorage.getItem(CHAVE_COLUNAS)) || []; } catch (e) { /* sem ordem salva */ }
+    return [...salvo.filter(n => base.includes(n)), ...base.filter(n => !salvo.includes(n))];
+}
+
+function renderizarKanban() {
+    const kb = document.getElementById('kanban');
+    if (!kb) return;
+    validarPastaAtual();
+    const termo = window.__termoBusca || '';
+    const guardado = kb.querySelector('.kb-board');
+    const rolagem = guardado ? guardado.scrollLeft : 0;
+    const padrao = opcoesRotulos[0].nome;
+    const colunas = ordemColunas().map(nome => ({ nome, cor: obterCorRotulo(nome), itens: [] }));
+    db.forEach((p, i) => {
+        if ((p.pai || null) !== (pastaAtual || null)) return;
+        const texto = [p.nome, p.rotulo, p.area, ...(p.tags || []).map(x => x.nome)].join(' ').toLowerCase();
+        if (termo && !texto.includes(termo)) return;
+        (colunas.find(c => c.nome === (p.rotulo || padrao)) || colunas.find(c => c.nome === padrao) || colunas[0]).itens.push(i);
+    });
+    const pai = pastaAtual ? ((pastaPorId(pastaAtual) || {}).pai || null) : null;
+    const voltar = pastaAtual
+        ? `<div class="kb-voltar" data-drop-pasta="${pai || ''}" onclick="irParaPasta(${pai ? `'${pai}'` : 'null'})">↰ Voltar para ${escapeHTML(pai ? pastaPorId(pai).nome : 'Workspace')}</div>`
+        : '';
+    kb.innerHTML = voltar + '<div class="kb-board">' + colunas.map(c => `
+        <section class="kb-col" data-rotulo="${escapeHTML(c.nome)}">
+            <header class="kb-col-topo" style="--cor-col:${c.cor}" title="Arraste para reordenar as colunas"><span class="alca-arrastar kb-col-alca">⠿</span><h3>${escapeHTML(c.nome)}</h3><span class="kb-conta">${c.itens.length}</span></header>
+            <div class="kb-lista">${c.itens.map(htmlCardKanban).join('') || '<div class="kb-vazio">Sem itens</div>'}</div>
+        </section>`).join('') + '</div>';
+    kb.querySelector('.kb-board').scrollLeft = rolagem;
+}
+
+document.getElementById('kanban').addEventListener('click', e => {      // clique no card abre o projeto ou a pasta
+    const card = e.target.closest('.kb-card');
+    if (!card || e.target.closest('button, a, input')) return;
+    const i = Number(card.dataset.idx), p = db[i];
+    if (p.tipo === 'pasta') irParaPasta(p.id); else location.href = `cards.html?id=${i}`;
+});
+
+let arrastoKb = null;
+
+document.addEventListener('pointerdown', e => {
+    if (visaoAtual !== 'kanban' || e.button > 0 || !e.target.closest) return;
+    const card = e.target.closest('.kb-card');
+    if (!card || e.target.closest('button, a, input')) return;
+    if (e.pointerType === 'touch' && !e.target.closest('.kb-alca')) return;   // no toque, só pela alça
+    arrastoKb = { card, id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false, col: null, dentro: undefined };
+});
+
+window.addEventListener('pointermove', e => {
+    const a = arrastoKb;
+    if (!a || e.pointerId !== a.id) return;
+    if (!a.ativo) {
+        if (Math.hypot(e.clientX - a.x0, e.clientY - a.y0) < 6) return;
+        a.ativo = true;
+        a.card.classList.add('arrastando-origem');
+        document.body.classList.add('arrastando');
+        if (window.getSelection) window.getSelection().removeAllRanges();
+        const g = document.createElement('div');
+        g.className = 'ghost-arrasto';
+        g.textContent = a.card.querySelector('.kb-titulo').textContent.trim();
+        document.body.appendChild(g);
+        a.ghost = g;
+    }
+    a.ghost.style.left = (e.clientX + 14) + 'px';
+    a.ghost.style.top = (e.clientY + 10) + 'px';
+    if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > window.innerHeight - 70) window.scrollBy(0, 14);
+    const board = document.querySelector('#kanban .kb-board');
+    if (board) {
+        const r = board.getBoundingClientRect();
+        if (e.clientX < r.left + 50) board.scrollLeft -= 16; else if (e.clientX > r.right - 50) board.scrollLeft += 16;
+    }
+
+    document.querySelectorAll('.drop-acima, .drop-abaixo, .drop-dentro, .drop-col')
+        .forEach(x => x.classList.remove('drop-acima', 'drop-abaixo', 'drop-dentro', 'drop-col'));
+    a.alvo = null; a.col = null; a.dentro = undefined;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || !el.closest) return;
+    const origem = db[Number(a.card.dataset.idx)];
+    const podeIrPara = pastaId => !(origem.tipo === 'pasta' && (origem.id === pastaId || ehDescendente(origem.id, pastaId)))
+        && (origem.pai || null) !== (pastaId || null);
+
+    const zona = el.closest('[data-drop-pasta]');             // "voltar", Workspace e pastas do caminho
+    if (zona) {
+        const id = zona.dataset.dropPasta || null;
+        if (podeIrPara(id)) { a.dentro = id; zona.classList.add('drop-dentro'); }
+        return;
+    }
+    const alvo = el.closest('.kb-card');
+    if (alvo && alvo !== a.card) {
+        const r = alvo.getBoundingClientRect();
+        const rel = (e.clientY - r.top) / r.height;
+        if (alvo.classList.contains('kb-pasta') && rel > .25 && rel < .75) {   // meio da pasta = colocar dentro
+            const idPasta = db[Number(alvo.dataset.idx)].id;
+            if (podeIrPara(idPasta)) { a.dentro = idPasta; alvo.classList.add('drop-dentro'); }
+            return;
+        }
+        a.alvo = alvo;
+        a.depois = rel > .5;
+        alvo.classList.add(a.depois ? 'drop-abaixo' : 'drop-acima');
+        return;
+    }
+    const col = el.closest('.kb-col');
+    if (col) { a.col = col; col.classList.add('drop-col'); }
+});
+
+function finalizarArrastoKb(e, cancelar) {
+    const a = arrastoKb;
+    if (!a || e.pointerId !== a.id) return;
+    arrastoKb = null;
+    if (!a.ativo) return;
+    if (a.ghost) a.ghost.remove();
+    document.body.classList.remove('arrastando');
+    a.card.classList.remove('arrastando-origem');
+    document.querySelectorAll('.drop-acima, .drop-abaixo, .drop-dentro, .drop-col')
+        .forEach(x => x.classList.remove('drop-acima', 'drop-abaixo', 'drop-dentro', 'drop-col'));
+    window.__arrastou = true;                                  // evita abrir o card ao soltar
+    setTimeout(() => { window.__arrastou = false; }, 0);
+    if (cancelar) return;
+
+    const de = Number(a.card.dataset.idx);
+    if (a.dentro !== undefined) { moverParaPasta(de, a.dentro); return; }
+    const item = db[de];
+    if (a.alvo) {                                              // solto antes/depois de outro card: assume a coluna dele
+        const para = Number(a.alvo.dataset.idx);
+        item.rotulo = db[para].rotulo || opcoesRotulos[0].nome;
+        db.splice(de, 1);
+        let pos = para > de ? para - 1 : para;
+        if (a.depois) pos += 1;
+        db.splice(pos, 0, item);
+    } else if (a.col) {                                        // solto na coluna: vai para o fim dela
+        item.rotulo = a.col.dataset.rotulo;
+        db.splice(de, 1);
+        db.push(item);
+    } else {
+        return;
+    }
+    salvarPastas();                                            // salva, envia à nuvem e redesenha
+}
+window.addEventListener('pointerup', e => finalizarArrastoKb(e, false));
+window.addEventListener('pointercancel', e => finalizarArrastoKb(e, true));
+
+let arrastoCol = null;
+
+document.addEventListener('pointerdown', e => {                // arrastar o título da coluna reordena as colunas
+    if (visaoAtual !== 'kanban' || e.button > 0 || !e.target.closest) return;
+    const topo = e.target.closest('.kb-col-topo');
+    if (!topo) return;
+    if (e.pointerType === 'touch' && !e.target.closest('.kb-col-alca')) return;
+    arrastoCol = { col: topo.closest('.kb-col'), id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false };
+});
+
+window.addEventListener('pointermove', e => {
+    const a = arrastoCol;
+    if (!a || e.pointerId !== a.id) return;
+    if (!a.ativo) {
+        if (Math.hypot(e.clientX - a.x0, e.clientY - a.y0) < 6) return;
+        a.ativo = true;
+        a.col.classList.add('arrastando-origem');
+        document.body.classList.add('arrastando');
+        if (window.getSelection) window.getSelection().removeAllRanges();
+        const g = document.createElement('div');
+        g.className = 'ghost-arrasto';
+        g.textContent = a.col.dataset.rotulo;
+        document.body.appendChild(g);
+        a.ghost = g;
+    }
+    a.ghost.style.left = (e.clientX + 14) + 'px';
+    a.ghost.style.top = (e.clientY + 10) + 'px';
+    const board = document.querySelector('#kanban .kb-board');
+    if (board) {
+        const r = board.getBoundingClientRect();
+        if (e.clientX < r.left + 60) board.scrollLeft -= 18; else if (e.clientX > r.right - 60) board.scrollLeft += 18;
+    }
+    document.querySelectorAll('.kb-col.drop-esq, .kb-col.drop-dir').forEach(x => x.classList.remove('drop-esq', 'drop-dir'));
+    a.alvo = null;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const alvo = el && el.closest ? el.closest('.kb-col') : null;
+    if (!alvo || alvo === a.col) return;
+    const r = alvo.getBoundingClientRect();
+    a.alvo = alvo;
+    a.depois = e.clientX > r.left + r.width / 2;
+    alvo.classList.add(a.depois ? 'drop-dir' : 'drop-esq');
+});
+
+function finalizarArrastoCol(e, cancelar) {
+    const a = arrastoCol;
+    if (!a || e.pointerId !== a.id) return;
+    arrastoCol = null;
+    if (!a.ativo) return;
+    if (a.ghost) a.ghost.remove();
+    document.body.classList.remove('arrastando');
+    a.col.classList.remove('arrastando-origem');
+    document.querySelectorAll('.kb-col.drop-esq, .kb-col.drop-dir').forEach(x => x.classList.remove('drop-esq', 'drop-dir'));
+    if (cancelar || !a.alvo) return;
+    const nomes = [...document.querySelectorAll('#kanban .kb-col')].map(c => c.dataset.rotulo).filter(n => n !== a.col.dataset.rotulo);
+    let i = nomes.indexOf(a.alvo.dataset.rotulo);
+    if (a.depois) i++;
+    nomes.splice(i, 0, a.col.dataset.rotulo);
+    localStorage.setItem(CHAVE_COLUNAS, JSON.stringify(nomes));
+    renderizarKanban();
+}
+window.addEventListener('pointerup', e => finalizarArrastoCol(e, false));
+window.addEventListener('pointercancel', e => finalizarArrastoCol(e, true));
+
 /* ---------- Pastas: criar, abrir, mover (arrastando), renomear e excluir ---------- */
 function pastaPorId(id) { return id ? db.find(x => x.tipo === 'pasta' && x.id === id) : null; }
 function contarFilhos(id) { return db.filter(x => (x.pai || null) === id).length; }
@@ -1294,7 +1553,7 @@ function atualizarBarraOrdem() {
     const barra = document.getElementById('barra-ordem');
     if (!barra) return;
     barra.innerHTML = ordenacaoAtual
-        ? `<span>Visualização ordenada por <strong>${NOMES_COLUNAS[ordenacaoAtual]}</strong> ${direcaoOrdenacao === 1 ? '↑' : '↓'} · o arraste fica desativado</span>
+        ? `<span>Visualização ordenada por <strong>${NOMES_COLUNAS[ordenacaoAtual]}</strong> ${direcaoOrdenacao === 1 ? '↑' : '↓'} · Arraste desativado</span>
            <span class="barra-acoes"><button type="button" class="btn-ordem" onclick="adotarOrdemAtual()">Salvar como minha ordem</button><button type="button" class="btn-ordem" onclick="usarOrdemPersonalizada()">Voltar à ordem personalizada</button></span>`
         : '<span>⠿ Ordem personalizada · arraste para reorganizar ou solte sobre uma pasta</span>';
 }
@@ -1398,11 +1657,11 @@ function aplicarBusca() {
         tr.style.display = !termo || tr.textContent.toLowerCase().includes(termo) ? '' : 'none';
     });
 }
-window.aoBuscar = t => { window.__termoBusca = t; aplicarBusca(); };
+window.aoBuscar = t => { window.__termoBusca = t; aplicarBusca(); if (visaoAtual === 'kanban') renderizarKanban(); };
 window.aoNovoRegistro = abrirModal;
 window.aoNovaPasta = criarPasta;
 const _renderizarTabelaBase = renderizarTabela;
-renderizarTabela = function () { _renderizarTabelaBase(); atualizarBarraOrdem(); atualizarCaminho(); aplicarBusca(); };
+renderizarTabela = function () { _renderizarTabelaBase(); atualizarBarraOrdem(); atualizarCaminho(); aplicarBusca(); aplicarVisao(); };
 
 renderizarTabela();
 

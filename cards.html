@@ -17,10 +17,25 @@
 
         <h1 class="titulo-projeto" id="header-titulo">A carregar...</h1>
         <span class="tags-header" id="header-tags"></span>
+        <button type="button" class="btn-tag-mais" id="btn-tag-mais" title="Adicionar tag" aria-label="Adicionar tag">+</button>
 
         <span class="selo selo-andamento" id="header-status">Em andamento</span>
         <span class="pilula-area" id="header-area"></span>
         <span class="pilula-prazo" id="header-prazo" hidden></span>
+        <button type="button" class="btn-editar-dados" id="btn-editar-dados" title="Editar dados" aria-label="Editar dados">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
+        </button>
+
+        <div class="painel-edicao" id="painel-edicao" hidden>
+            <label>Título<input id="ed-nome" class="input-inline-tabela" maxlength="120" autocomplete="off"></label>
+            <label>Rótulo<select id="ed-rotulo" class="select-inline-tabela"></select></label>
+            <label>Área<select id="ed-area" class="select-inline-tabela"></select></label>
+            <label>Prazo<input id="ed-prazo" type="date" class="input-inline-tabela"></label>
+            <div class="ed-acoes">
+                <button type="button" class="btn-ordem" id="ed-cancelar">Cancelar</button>
+                <button type="button" class="btn-salvar-inline" id="ed-salvar">Salvar</button>
+            </div>
+        </div>
     </div>
 
     <div class="timeline-container">
@@ -284,6 +299,201 @@
             const m = String(prazo).match(/^(\d{4})-(\d{2})-(\d{2})$/);
             return m ? `${m[3]}/${m[2]}/${m[1]}` : prazo;
         }
+
+        /* ---------- Editar os dados do projeto (título, rótulo, área, prazo e tags) na própria página ---------- */
+        const ROTULOS_ORDEM = ['Em andamento', 'Esperando', 'Atrasado', 'A ser feito', 'Pronto'];
+
+        function listaRotulosEdicao() {
+            let nomes = [];
+            try { nomes = (JSON.parse(localStorage.getItem('bahub_opcoes_rotulos')) || []).map(r => r.nome); } catch (e) { /* padrão */ }
+            ROTULOS_ORDEM.forEach(n => { if (!nomes.includes(n)) nomes.push(n); });
+            return nomes.sort((a, b) => {
+                const i = ROTULOS_ORDEM.indexOf(a), j = ROTULOS_ORDEM.indexOf(b);
+                return (i < 0 ? 99 : i) - (j < 0 ? 99 : j);
+            });
+        }
+        function listaAreasEdicao() {
+            let a = null;
+            try { a = JSON.parse(localStorage.getItem('bahub_opcoes_area')); } catch (e) { /* padrão */ }
+            return Array.isArray(a) && a.length ? a : ['Projeto', 'Melhoria', 'Tarefa', 'Gerais', 'BI e SSAPM'];
+        }
+        function preencherSelect(id, lista, atual) {
+            const itens = atual && !lista.includes(atual) ? [...lista, atual] : lista;
+            document.getElementById(id).innerHTML = itens
+                .map(v => `<option${v === atual ? ' selected' : ''}>${escaparHTML(v)}</option>`).join('');
+        }
+        function abrirEdicaoDados() {
+            document.getElementById('ed-nome').value = projetoAtual.nome || '';
+            preencherSelect('ed-rotulo', listaRotulosEdicao(), projetoAtual.rotulo || projetoAtual.status || 'Em andamento');
+            preencherSelect('ed-area', listaAreasEdicao(), projetoAtual.area || 'Projeto');
+            const prazo = projetoAtual.prazo || '';
+            document.getElementById('ed-prazo').value = /^\d{4}-\d{2}-\d{2}$/.test(prazo) ? prazo : '';
+            document.getElementById('painel-edicao').hidden = false;
+            document.getElementById('ed-nome').focus();
+        }
+        function fecharEdicaoDados() {
+            document.getElementById('painel-edicao').hidden = true;
+        }
+        function salvarEdicaoDados() {
+            const nome = document.getElementById('ed-nome').value.trim();
+            if (!nome) { alert('O título não pode ficar vazio.'); return; }
+            const rotulo = document.getElementById('ed-rotulo').value;
+            projetoAtual.nome = nome;
+            projetoAtual.rotulo = rotulo;
+            if ('status' in projetoAtual) projetoAtual.status = rotulo;
+            projetoAtual.area = document.getElementById('ed-area').value;
+            projetoAtual.prazo = document.getElementById('ed-prazo').value || '---';
+            db[projetoId] = projetoAtual;
+            salvarBancoDeDados(db);
+            if (typeof enviarAgora === 'function') enviarAgora();
+            fecharEdicaoDados();
+            renderizarTimeline();
+        }
+
+        document.getElementById('btn-editar-dados').addEventListener('click', () => {
+            if (document.getElementById('painel-edicao').hidden) abrirEdicaoDados(); else fecharEdicaoDados();
+        });
+        document.getElementById('ed-salvar').addEventListener('click', salvarEdicaoDados);
+        document.getElementById('ed-cancelar').addEventListener('click', fecharEdicaoDados);
+        document.getElementById('painel-edicao').addEventListener('keydown', e => {
+            if (e.key === 'Escape') { fecharEdicaoDados(); return; }
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            salvarEdicaoDados();
+        });
+
+        /* ---------- Tags do projeto: mesmo seletor do menu (escolher existente, criar com cor, remover) ---------- */
+        const CORES_TAG = [
+            '#3b82f6', '#22c55e', '#ef4444', '#f97316', '#eab308', '#a855f7',
+            '#ec4899', '#14b8a6', '#6366f1', '#92400e', '#6b7280'
+        ];
+        let popTags = null;
+
+        function tagsExistentes() {
+            const mapa = new Map();
+            db.forEach(p => (p.tags || []).forEach(tg => {
+                const k = tg.nome.toLowerCase() + '|' + tg.cor;
+                if (!mapa.has(k)) mapa.set(k, { nome: tg.nome, cor: tg.cor });
+            }));
+            return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        }
+
+        function fecharPopTags() {
+            if (popTags) { popTags.el.remove(); popTags = null; }
+        }
+
+        function abrirPopTags(event) {
+            event.stopPropagation();
+            if (popTags) return fecharPopTags();
+            const el = document.createElement('div');
+            el.className = 'pop-tags';
+            el.setAttribute('role', 'dialog');
+            el.setAttribute('aria-label', 'Tags do projeto');
+            popTags = { el, cor: CORES_TAG[0], livres: [] };
+            document.body.appendChild(el);
+
+            el.addEventListener('click', e => {
+                const b = e.target.closest('[data-acao]');
+                if (!b) return;
+                const acao = b.dataset.acao;
+                if (acao === 'cor') definirCorPop(b.dataset.cor);
+                else if (acao === 'remover') removerTag(Number(b.dataset.i));
+                else if (acao === 'usar') adicionarTag(popTags.livres[Number(b.dataset.i)]);
+                else if (acao === 'criar') criarTag();
+            });
+            el.addEventListener('input', e => {
+                if (e.target.id === 'tag-cor-custom') definirCorPop(e.target.value);
+            });
+            el.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && e.target.id === 'tag-nome') { e.preventDefault(); criarTag(); }
+            });
+
+            desenharPopTags();
+            posicionarPopTags();
+            const campo = el.querySelector('#tag-nome');
+            if (campo) campo.focus();
+        }
+
+        function desenharPopTags() {
+            const atuais = projetoAtual.tags || [];
+            const livres = tagsExistentes().filter(tg => !atuais.some(a => a.nome.toLowerCase() === tg.nome.toLowerCase()));
+            popTags.livres = livres;
+            const estilo = c => `background:${c.cor};color:${corTextoTag(c.cor)}`;
+            popTags.el.innerHTML = `
+                ${atuais.length ? `<div class="pop-sec"><div class="pop-tit">Neste item</div><div class="pop-chips">
+                    ${atuais.map((tg, i) => `<span class="tag-bolha tag-removivel" style="${estilo(tg)}">${escaparHTML(tg.nome)}<button type="button" data-acao="remover" data-i="${i}" aria-label="Remover tag ${escaparHTML(tg.nome)}">×</button></span>`).join('')}
+                </div></div>` : ''}
+                ${livres.length ? `<div class="pop-sec"><div class="pop-tit">Tags existentes</div><div class="pop-chips">
+                    ${livres.map((tg, i) => `<button type="button" class="tag-bolha tag-escolher" data-acao="usar" data-i="${i}" style="${estilo(tg)}">${escaparHTML(tg.nome)}</button>`).join('')}
+                </div></div>` : ''}
+                <div class="pop-sec"><div class="pop-tit">Nova tag</div>
+                    <input id="tag-nome" class="pop-input" maxlength="24" placeholder="Nome da tag" autocomplete="off">
+                    <div class="pop-cores">
+                        ${CORES_TAG.map(c => `<button type="button" class="cor-opcao${c === popTags.cor ? ' sel' : ''}" data-acao="cor" data-cor="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}
+                        <label class="cor-opcao cor-custom${CORES_TAG.includes(popTags.cor) ? '' : ' sel'}" title="Outra cor"><input type="color" id="tag-cor-custom" value="${popTags.cor}"></label>
+                    </div>
+                    <button type="button" class="btn-salvar-inline pop-criar" data-acao="criar">Adicionar</button>
+                </div>`;
+        }
+
+        function definirCorPop(cor) {
+            popTags.cor = cor;
+            popTags.el.querySelectorAll('.cor-opcao').forEach(b => b.classList.remove('sel'));
+            const pre = popTags.el.querySelector(`.cor-opcao[data-cor="${cor}"]`);
+            (pre || popTags.el.querySelector('.cor-custom')).classList.add('sel');
+        }
+
+        function posicionarPopTags() {
+            const btn = document.getElementById('btn-tag-mais');
+            if (!btn || !popTags) return;
+            const r = btn.getBoundingClientRect(), el = popTags.el;
+            el.style.maxHeight = (window.innerHeight - 16) + 'px';
+            const w = el.offsetWidth, h = el.offsetHeight;
+            const left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+            let top = r.bottom + 6;
+            if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - 6 - h);
+            el.style.left = left + 'px';
+            el.style.top = top + 'px';
+        }
+
+        function atualizarAposTag() {
+            db[projetoId] = projetoAtual;
+            salvarBancoDeDados(db);
+            if (typeof enviarAgora === 'function') enviarAgora();
+            document.getElementById('header-tags').innerHTML = (projetoAtual.tags || []).map(htmlTagBolha).join('');
+            desenharPopTags();
+            posicionarPopTags();
+        }
+
+        function adicionarTag(tag) {
+            if (!tag) return;
+            projetoAtual.tags = projetoAtual.tags || [];
+            if (projetoAtual.tags.some(x => x.nome.toLowerCase() === tag.nome.toLowerCase())) return;
+            projetoAtual.tags.push({ nome: tag.nome, cor: tag.cor });
+            atualizarAposTag();
+        }
+
+        function criarTag() {
+            const campo = popTags.el.querySelector('#tag-nome');
+            const nome = campo.value.trim().slice(0, 24);
+            if (!nome) { campo.focus(); return; }
+            adicionarTag({ nome, cor: popTags.cor });
+            const novo = popTags.el.querySelector('#tag-nome');
+            if (novo) novo.focus();
+        }
+
+        function removerTag(i) {
+            (projetoAtual.tags || []).splice(i, 1);
+            atualizarAposTag();
+        }
+
+        document.getElementById('btn-tag-mais').addEventListener('click', abrirPopTags);
+        document.addEventListener('pointerdown', e => {
+            if (popTags && !popTags.el.contains(e.target) && !e.target.closest('#btn-tag-mais')) fecharPopTags();
+        }, true);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPopTags(); });
+        window.addEventListener('resize', () => { if (popTags) posicionarPopTags(); });
+        window.addEventListener('scroll', () => { if (popTags) posicionarPopTags(); }, true);
 
         async function renderizarTimeline() {
 

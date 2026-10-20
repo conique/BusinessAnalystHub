@@ -590,3 +590,92 @@ tr.linha-voltar .col-nome{color:var(--texto-2);font-weight:500}
 tr.linha-vazia td{text-align:center;padding:28px 14px}
 tr.drop-dentro{background:rgba(75,85,99,.15)!important;box-shadow:inset 0 0 0 2px var(--accent-btn)}
 .migalha-link.drop-dentro,.marca-ba.drop-dentro{outline:2px solid var(--accent-btn);outline-offset:3px;border-radius:6px}
+/* ---------- Kanban (visão por rótulo) ---------- */
+.visao-toggle{display:inline-flex;padding:2px;border:1px solid var(--borda);border-radius:9999px}
+.visao-toggle button{border:0;background:transparent;color:var(--texto-2);padding:4px 12px;border-radius:9999px;
+  font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,color .15s}
+.visao-toggle button:hover{color:var(--texto)}
+.visao-toggle button.on{background:var(--accent-btn);color:#1e1e1e}
+.kanban[hidden]{display:none}
+.kb-voltar{margin:14px 16px 0;padding:8px 14px;border:1px dashed var(--borda);border-radius:10px;font-size:13px;
+  color:var(--texto-2);cursor:pointer;transition:background .15s,color .15s}
+.kb-voltar:hover{background:var(--surface-2);color:var(--texto)}
+.kb-voltar.drop-dentro{outline:2px solid var(--accent-btn);background:rgba(0,200,117,.1)}
+.kb-board{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding:16px;scroll-snap-type:x proximity}
+.kb-col{flex:0 0 280px;min-height:160px;padding:14px 12px 12px;scroll-snap-align:start;
+  background:var(--surface-2);border:1px solid var(--borda);border-radius:14px}
+.kb-col.drop-col{outline:2px solid var(--accent-btn);outline-offset:-2px}
+.kb-col-topo{display:flex;align-items:baseline;gap:10px;padding:0 4px 10px;margin-bottom:12px;border-bottom:2px solid var(--cor-col)}
+.kb-col-topo h3{margin:0;font-size:15px;font-weight:600;color:var(--texto)}
+.kb-conta{padding-left:10px;border-left:1px solid var(--borda);font-size:13px;color:var(--texto-2)}
+.kb-lista{display:flex;flex-direction:column;gap:10px;min-height:40px}
+.kb-vazio{padding:14px 8px;text-align:center;font-size:12px;color:var(--texto-2)}
+.kb-card{position:relative;padding:12px 14px;cursor:pointer;background:var(--surface);border:1px solid var(--borda);
+  border-left:4px solid var(--cor-card);border-radius:10px;transition:transform .15s,box-shadow .15s}
+.kb-card:hover{transform:translateY(-1px);box-shadow:0 6px 16px -8px rgba(0,0,0,.55)}
+.kb-card-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.kb-titulo{font-size:14px;font-weight:500;line-height:1.4;color:var(--texto);overflow-wrap:anywhere}
+.kb-alca{margin:0;font-size:14px;opacity:.35}
+.kb-card:hover .kb-alca{opacity:1}
+.kb-meta,.kb-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.kb-prazo{padding:2px 8px;border:1px solid var(--borda);border-radius:6px;font-size:12px;color:var(--texto-2)}
+.kb-card.arrastando-origem{opacity:.35}
+.kb-card.drop-acima{box-shadow:0 -3px 0 var(--accent-btn)}
+.kb-card.drop-abaixo{box-shadow:0 3px 0 var(--accent-btn)}
+.kb-card.drop-dentro{outline:2px solid var(--accent-btn);background:rgba(0,200,117,.08)}
+@media(max-width:700px){.kb-col{flex-basis:82vw}.kb-board{padding:12px}}
+
+/* ---------- Kanban solto na página (sem caixa) e alternador acima da tabela ---------- */
+.barra-visao{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:12px}
+.barra-visao[hidden]{display:none}
+.visao-dica{font-size:12px;color:var(--texto-2)}
+body>#kanban{margin-bottom:48px}
+.kb-board{padding:0 0 12px}
+.kb-voltar{margin:0 0 14px}
+.kb-col{background:var(--surface)}
+.kb-card{background:var(--surface-2)}
+@media(max-width:700px){.kb-board{padding:0 0 12px}}
+
+/* ---------- Kanban: alternador no header, quadro que vai até a borda da tela, colunas reordenáveis ---------- */
+.topo-visao{display:inline-flex}
+.topo-visao[hidden]{display:none}
+.kb-board{margin-right:calc(50% - 50vw);padding:0 24px 14px 0}   /* começa onde o conteúdo começa e segue até a borda da tela */
+.kb-col-topo{cursor:grab;user-select:none}
+.kb-col-alca{margin:0 -2px 0 0;font-size:13px;opacity:.35}
+.kb-col-topo:hover .kb-col-alca{opacity:1}
+.kb-col.arrastando-origem{opacity:.4}
+.kb-col.drop-esq{box-shadow:-4px 0 0 var(--accent-btn)}
+.kb-col.drop-dir{box-shadow:4px 0 0 var(--accent-btn)}
+@media(max-width:700px){.kb-board{padding:0 12px 12px 0}}
+
+/* Kanban alinhado à esquerda exatamente como a caixa da tabela (que também não tem padding lateral) */
+body>#kanban{padding-left:0!important;padding-right:0!important}
+
+/* ---------- Kanban de ponta a ponta: o quadro ocupa a largura toda da tela (cards podem encostar nas duas bordas),
+   mas a rolagem começa/termina com a MESMA folga do conteúdo (alinhada à caixa da tabela) ---------- */
+body>#kanban{max-width:none!important;padding:0!important}
+.kb-board{--folga:max(12px, calc((100% - 1380px) / 2));margin:0;padding:0 var(--folga) 14px;scroll-padding-left:var(--folga)}
+.kb-voltar{margin:0 max(12px, calc((100% - 1380px) / 2)) 14px}
+
+/* ---------- Kanban estático: as colunas dividem a largura e cabem todas na tela (sem rolar) ---------- */
+.kb-col{flex:1 1 0;min-width:220px}
+@media(max-width:700px){.kb-col{flex:0 0 82vw;min-width:0}}
+
+/* ---------- Editar dados do projeto na própria página ---------- */
+.btn-editar-dados{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;
+  border:1px solid var(--borda);border-radius:50%;background:transparent;color:var(--texto-2);cursor:pointer;
+  transition:background .15s,color .15s}
+.btn-editar-dados:hover{background:var(--surface-2);color:var(--texto)}
+.painel-edicao{flex:1 1 100%;display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));gap:12px;
+  padding:14px;background:var(--surface);border:1px solid var(--borda);border-radius:12px}
+.painel-edicao[hidden]{display:none}
+.painel-edicao label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--texto-2)}
+.painel-edicao .input-inline-tabela,.painel-edicao .select-inline-tabela{width:100%;max-width:none;font-size:14px;
+  font-weight:400;letter-spacing:0;text-transform:none}
+.ed-acoes{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ed-acoes{justify-content:flex-end}
+@media(max-width:700px){
+  .painel-edicao{grid-template-columns:1fr 1fr}
+  .painel-edicao label:first-child{grid-column:1/-1}
+}
