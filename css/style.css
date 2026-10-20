@@ -582,7 +582,6 @@ html[data-tema="claro"] .lg-overlay{background:radial-gradient(ellipse at 50% 0%
 html[data-tema="claro"] .lg-card{border:1px solid #e2e8f0;box-shadow:0 30px 60px -20px rgba(15,23,42,.25)}
 
 /* ---------- Pastas ---------- */
-.pasta-contagem{font-size:12px;font-weight:400;color:var(--texto-2);white-space:nowrap}
 tr.linha-voltar,tr.linha-vazia{cursor:default}
 tr.linha-voltar{cursor:pointer}
 tr.linha-voltar td,tr.linha-vazia td{color:var(--texto-2);font-size:13px}
@@ -613,8 +612,10 @@ tr.drop-dentro{background:rgba(75,85,99,.15)!important;box-shadow:inset 0 0 0 2p
 .kb-card{position:relative;padding:12px 14px;cursor:pointer;background:var(--surface);border:1px solid var(--borda);
   border-left:4px solid var(--cor-card);border-radius:10px;transition:transform .15s,box-shadow .15s}
 .kb-card:hover{transform:translateY(-1px);box-shadow:0 6px 16px -8px rgba(0,0,0,.55)}
-.kb-card-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.kb-card-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .kb-titulo{font-size:14px;font-weight:500;line-height:1.4;color:var(--texto);overflow-wrap:anywhere}
+.item-detalhe{margin-left:6px;font-size:12px;font-weight:500;line-height:1.4;color:#9d9d9d;white-space:nowrap}
+html[data-tema="claro"] .item-detalhe{color:#64748b}
 .kb-alca{margin:0;font-size:14px;opacity:.35}
 .kb-card:hover .kb-alca{opacity:1}
 .kb-meta,.kb-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}

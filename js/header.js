@@ -17,7 +17,7 @@
             ${simples ? '' : '<span class="topo-visao" id="topo-visao" hidden></span>'}
             ${simples ? '' : `<label class="busca">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
-                <input id="topo-busca" type="search" placeholder="Buscar página..." autocomplete="off">
+                <input id="topo-busca" type="search" placeholder="Buscar páginas..." autocomplete="off">
             </label>
             <button class="btn-novo" id="topo-novo" type="button">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
