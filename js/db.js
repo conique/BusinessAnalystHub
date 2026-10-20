@@ -1,11 +1,62 @@
 /* BAHUB — dados no Supabase, com cache local (localStorage + IndexedDB) */
 const CHAVE_DB = 'bahub_db';
+const CHAVE_PREFERENCIAS = 'bahub_preferencias';
 const BUCKET = 'midias';
 const PEND_FLAG = 'bahub_pendente';
 let seq = 0;
 let sb = null, usuario = null, versao = null, timer = null, fila = Promise.resolve(), ultimoStatus = '';
 
 function lerBancoDeDados() { return JSON.parse(localStorage.getItem(CHAVE_DB)) || []; }
+function lerPreferenciasBanco() {
+    try {
+        const preferencias = JSON.parse(localStorage.getItem(CHAVE_PREFERENCIAS));
+        if (preferencias && typeof preferencias === 'object' && !Array.isArray(preferencias)) return preferencias;
+    } catch (e) { /* migra preferências antigas */ }
+
+    const preferencias = {};
+    const visao = localStorage.getItem('bahub_visao');
+    if (visao === 'tabela' || visao === 'kanban') preferencias.visao = visao;
+    try {
+        const ordenacao = JSON.parse(localStorage.getItem('bahub_ordenacao'));
+        if (ordenacao && ['nome', 'rotulo', 'area', 'prazo'].includes(ordenacao.tipo)) {
+            preferencias.ordenacao = { tipo: ordenacao.tipo, dir: ordenacao.dir === -1 ? -1 : 1 };
+        }
+    } catch (e) { /* sem ordenação antiga salva */ }
+    try {
+        const colunas = JSON.parse(localStorage.getItem('bahub_kanban_colunas'));
+        if (Array.isArray(colunas)) preferencias.kanbanColunas = colunas;
+    } catch (e) { /* sem ordem antiga de colunas salva */ }
+    localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify(preferencias));
+    return preferencias;
+}
+function salvarPreferenciasBanco(preferencias) {
+    if (!preferencias || typeof preferencias !== 'object' || Array.isArray(preferencias)) {
+        throw new TypeError('As preferências precisam ser um objeto.');
+    }
+    localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify(preferencias));
+    salvarBancoDeDados(lerBancoDeDados());
+}
+function carregarDadosPersistidos(dados) {
+    const preferenciasLocais = lerPreferenciasBanco();
+    if (Array.isArray(dados)) {
+        localStorage.setItem(CHAVE_DB, JSON.stringify(dados));
+        localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify(preferenciasLocais));
+        return true;
+    }
+    if (!dados || typeof dados !== 'object' || !Array.isArray(dados.itens)) {
+        throw new Error('Os dados recebidos da nuvem têm um formato inválido.');
+    }
+    localStorage.setItem(CHAVE_DB, JSON.stringify(dados.itens));
+    localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify(
+        dados.preferencias && typeof dados.preferencias === 'object' && !Array.isArray(dados.preferencias)
+            ? dados.preferencias
+            : {}
+    ));
+    return false;
+}
+function montarDadosPersistidos() {
+    return { itens: lerBancoDeDados(), preferencias: lerPreferenciasBanco() };
+}
 function salvarBancoDeDados(dados) {
     localStorage.setItem(CHAVE_DB, JSON.stringify(dados));
     if (sb && usuario) { localStorage.setItem(PEND_FLAG, '1'); seq++; }
@@ -44,8 +95,8 @@ window.addEventListener('beforeunload', e => {
 });
 
 async function enviar() {
-    if (!sb || !usuario) return;
-    const dados = lerBancoDeDados();
+    if (!sb || !usuario) return false;
+    const dados = montarDadosPersistidos();
     const minhaSeq = seq;
     try {
         let r;
@@ -61,15 +112,17 @@ async function enviar() {
             if (!r.data.length) {
                 setStatus('Conflito: recarregue a página');
                 alert('Outro computador alterou os dados. Recarregue a página para ver a versão mais recente.\n\nSuas últimas alterações NÃO foram enviadas.');
-                return;
+                return false;
             }
             versao = r.data[0].atualizado_em;
         }
         if (minhaSeq === seq) localStorage.removeItem(PEND_FLAG);
         setStatus('Salvo na nuvem');
+        return true;
     } catch (e) {
         console.error(e);
         setStatus('Erro ao salvar na nuvem');
+        return false;
     }
 }
 
@@ -174,6 +227,10 @@ async function sairDaConta() {
     }
     await sb.auth.signOut();
     localStorage.removeItem(CHAVE_DB);
+    localStorage.removeItem(CHAVE_PREFERENCIAS);
+    localStorage.removeItem('bahub_visao');
+    localStorage.removeItem('bahub_ordenacao');
+    localStorage.removeItem('bahub_kanban_colunas');
     localStorage.removeItem(PEND_FLAG);
     location.reload();
 }
@@ -209,7 +266,12 @@ async function iniciarBanco() {
         if (localStorage.getItem(PEND_FLAG) === '1') {
             await enviar();   // havia alteração local ainda não enviada (ex.: trocou de página rápido)
         } else {
-            localStorage.setItem(CHAVE_DB, JSON.stringify(data.dados));
+            const migrarFormato = carregarDadosPersistidos(data.dados);
+            if (migrarFormato) {
+                localStorage.setItem(PEND_FLAG, '1');
+                seq++;
+                if (!await enviar()) return;
+            }
         }
     } else if (lerBancoDeDados().length) {   // primeira vez: sobe o que já existe neste navegador
         await enviar();

@@ -201,18 +201,14 @@ let ordenacaoAtual = null;
 let direcaoOrdenacao = 1;
 
 let pastaAtual = new URLSearchParams(location.search).get('pasta') || null;
-const CHAVE_VISAO = 'bahub_visao';
-let visaoAtual = localStorage.getItem(CHAVE_VISAO) === 'kanban' ? 'kanban' : 'tabela';
+const preferenciasUsuario = lerPreferenciasBanco();
+let visaoAtual = preferenciasUsuario.visao === 'kanban' ? 'kanban' : 'tabela';
 
-/* A ordenação por coluna escolhida no cabeçalho fica lembrada ao recarregar a página. */
-const CHAVE_ORDENACAO = 'bahub_ordenacao';
-try {
-    const o = JSON.parse(localStorage.getItem(CHAVE_ORDENACAO));
-    if (o && ['nome', 'rotulo', 'area', 'prazo'].includes(o.tipo)) {
-        ordenacaoAtual = o.tipo;
-        direcaoOrdenacao = o.dir === -1 ? -1 : 1;
-    }
-} catch (e) { /* sem ordenação salva */ }
+const ordenacaoSalva = preferenciasUsuario.ordenacao;
+if (ordenacaoSalva && ['nome', 'rotulo', 'area', 'prazo'].includes(ordenacaoSalva.tipo)) {
+    ordenacaoAtual = ordenacaoSalva.tipo;
+    direcaoOrdenacao = ordenacaoSalva.dir === -1 ? -1 : 1;
+}
 
 
 const ordemRotulos = [
@@ -320,6 +316,10 @@ function ordenarPor(tipo) {
 
     }
 
+    salvarPreferenciasBanco({
+        ...lerPreferenciasBanco(),
+        ordenacao: { tipo: ordenacaoAtual, dir: direcaoOrdenacao }
+    });
     renderizarTabela();
 
 }
@@ -1166,7 +1166,7 @@ window.addEventListener('scroll', () => { if (popTags) posicionarPopTags(); }, t
 /* ---------- Visão Kanban: colunas por rótulo, arraste entre colunas muda o rótulo ---------- */
 function mudarVisao(v) {
     visaoAtual = v;
-    localStorage.setItem(CHAVE_VISAO, v);
+    salvarPreferenciasBanco({ ...lerPreferenciasBanco(), visao: v });
     renderizarTabela();
 }
 
@@ -1210,11 +1210,9 @@ function htmlCardKanban(i) {
     </article>`;
 }
 
-const CHAVE_COLUNAS = 'bahub_kanban_colunas';
 function ordemColunas() {
     const base = opcoesRotulos.map(r => r.nome);
-    let salvo = [];
-    try { salvo = JSON.parse(localStorage.getItem(CHAVE_COLUNAS)) || []; } catch (e) { /* sem ordem salva */ }
+    const salvo = Array.isArray(preferenciasUsuario.kanbanColunas) ? preferenciasUsuario.kanbanColunas : [];
     return [...salvo.filter(n => base.includes(n)), ...base.filter(n => !salvo.includes(n))];
 }
 
@@ -1412,7 +1410,8 @@ function finalizarArrastoCol(e, cancelar) {
     let i = nomes.indexOf(a.alvo.dataset.rotulo);
     if (a.depois) i++;
     nomes.splice(i, 0, a.col.dataset.rotulo);
-    localStorage.setItem(CHAVE_COLUNAS, JSON.stringify(nomes));
+    preferenciasUsuario.kanbanColunas = nomes;
+    salvarPreferenciasBanco({ ...lerPreferenciasBanco(), kanbanColunas: nomes });
     renderizarKanban();
 }
 window.addEventListener('pointerup', e => finalizarArrastoCol(e, false));
@@ -1532,6 +1531,10 @@ function adotarOrdemAtual() {
     posicoes.forEach((pos, k) => { db[pos] = ordenados[k]; });
     ordenacaoAtual = null;
     direcaoOrdenacao = 1;
+    salvarPreferenciasBanco({
+        ...lerPreferenciasBanco(),
+        ordenacao: null
+    });
     salvarBancoDeDados(db);
     if (typeof enviarAgora === 'function') enviarAgora();
     renderizarTabela();
@@ -1540,12 +1543,14 @@ function adotarOrdemAtual() {
 function usarOrdemPersonalizada() {
     ordenacaoAtual = null;
     direcaoOrdenacao = 1;
+    salvarPreferenciasBanco({
+        ...lerPreferenciasBanco(),
+        ordenacao: null
+    });
     renderizarTabela();
 }
 
 function atualizarBarraOrdem() {
-    if (ordenacaoAtual) localStorage.setItem(CHAVE_ORDENACAO, JSON.stringify({ tipo: ordenacaoAtual, dir: direcaoOrdenacao }));
-    else localStorage.removeItem(CHAVE_ORDENACAO);
     document.querySelectorAll('.cabecalho-clicavel').forEach(th => {
         const m = (th.getAttribute('onclick') || '').match(/'(\w+)'/);
         th.dataset.ordem = m && m[1] === ordenacaoAtual ? (direcaoOrdenacao === 1 ? 'asc' : 'desc') : '';
