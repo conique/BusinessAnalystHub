@@ -6,13 +6,13 @@
     <meta name="theme-color" content="#111827">
     <title>BAHUB</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
-    <link rel="stylesheet" href="css/style.css?v=20261022-2">
+    <link rel="stylesheet" href="css/style.css?v=20261022-6">
 </head>
 
 <body>
 
 <header class="topo" id="topo" data-atual=""></header>
-<script src="js/header.js?v=20261022-2"></script>
+<script src="js/header.js?v=20261022-4"></script>
 
 
 <div id="estado-vazio" style="display:none;">
@@ -1266,7 +1266,7 @@ function indicesParaArrastar(index) {
 function iniciarSelecaoRetangular(e) {
     if (e.button !== 0 || !e.target.closest) return;
     if (!document.body.contains(e.target) || e.target.closest(
-        '.topo, .cabecalho-pagina, .footer-bahub, .modal-overlay, .lg-overlay, .pop-tags, ' +
+        '.topo, .cabecalho-pagina, .footer-bahub, .modal-overlay, .lg-overlay, .pop-tags, .painel-lateral, .fundo-painel-lateral, ' +
         '.kb-card, .kb-col-topo, #corpo-tabela tr, thead, button, input, select, textarea, a'
     )) return;
     if (!e.ctrlKey && !e.metaKey) limparSelecaoCards();

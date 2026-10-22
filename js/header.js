@@ -9,10 +9,14 @@
 
     topo.innerHTML = `
         <div class="topo-esq">
+            <button class="btn-menu-lateral" id="topo-menu-lateral" type="button" title="Abrir painel lateral" aria-label="Abrir painel lateral" aria-expanded="false" aria-controls="painel-lateral">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
             <a class="marca-ba" href="index.html" data-pasta="" data-drop-pasta="" title="Início">BA</a>
             <nav class="migalha" id="migalha" aria-label="Navegação"></nav>
         </div>
         <div class="topo-dir${simples ? ' solo' : ''}">
+            ${simples ? '' : '<span class="topo-visao" id="topo-visao" hidden></span>'}
             <div class="controle-historico" role="group" aria-label="Controle de alterações">
                 <button class="btn-historico" id="topo-desfazer" type="button" title="Desfazer" aria-label="Desfazer" disabled>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-15-6.7L3 13"></path></svg>
@@ -21,7 +25,6 @@
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 15-6.7L21 13"></path></svg>
                 </button>
             </div>
-            ${simples ? '' : '<span class="topo-visao" id="topo-visao" hidden></span>'}
             ${simples ? '' : `<label class="busca">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
                 <input id="topo-busca" type="search" placeholder="Buscar páginas..." autocomplete="off">
@@ -36,6 +39,62 @@
             </button>`}
             <button class="btn-tema" id="topo-tema" type="button"></button>
         </div>`;
+
+    const painelLateral = document.createElement('aside');
+    painelLateral.className = 'painel-lateral';
+    painelLateral.id = 'painel-lateral';
+    painelLateral.setAttribute('aria-label', 'Workspaces');
+    painelLateral.setAttribute('aria-hidden', 'true');
+    painelLateral.inert = true;
+    painelLateral.innerHTML = `
+        <div class="painel-lateral-topo">
+            <h2>Workspaces</h2>
+            <button class="btn-fechar-painel" id="fechar-painel-lateral" type="button" aria-label="Fechar painel lateral">×</button>
+        </div>
+        <p class="painel-lateral-vazio">A navegação entre workspaces aparecerá aqui.</p>`;
+    const fundoPainel = document.createElement('button');
+    fundoPainel.className = 'fundo-painel-lateral';
+    fundoPainel.type = 'button';
+    fundoPainel.setAttribute('aria-label', 'Fechar painel lateral');
+    fundoPainel.hidden = true;
+    document.body.append(painelLateral, fundoPainel);
+    function atualizarTopoPainel() {
+        document.documentElement.style.setProperty('--topo-altura', `${Math.ceil(topo.getBoundingClientRect().bottom)}px`);
+    }
+    atualizarTopoPainel();
+    window.addEventListener('resize', atualizarTopoPainel);
+
+    const btnPainel = document.getElementById('topo-menu-lateral');
+    const btnFecharPainel = document.getElementById('fechar-painel-lateral');
+    function fecharPainelLateral(devolverFoco) {
+        painelLateral.classList.remove('aberto');
+        painelLateral.setAttribute('aria-hidden', 'true');
+        painelLateral.inert = true;
+        fundoPainel.hidden = true;
+        btnPainel.setAttribute('aria-expanded', 'false');
+        btnPainel.title = 'Abrir painel lateral';
+        btnPainel.setAttribute('aria-label', btnPainel.title);
+        if (devolverFoco) btnPainel.focus();
+    }
+    function abrirPainelLateral() {
+        painelLateral.classList.add('aberto');
+        painelLateral.setAttribute('aria-hidden', 'false');
+        painelLateral.inert = false;
+        fundoPainel.hidden = false;
+        btnPainel.setAttribute('aria-expanded', 'true');
+        btnPainel.title = 'Fechar painel lateral';
+        btnPainel.setAttribute('aria-label', btnPainel.title);
+        btnFecharPainel.focus();
+    }
+    btnPainel.addEventListener('click', () => {
+        if (btnPainel.getAttribute('aria-expanded') === 'true') fecharPainelLateral(true);
+        else abrirPainelLateral();
+    });
+    btnFecharPainel.addEventListener('click', () => fecharPainelLateral(true));
+    fundoPainel.addEventListener('click', () => fecharPainelLateral(true));
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && btnPainel.getAttribute('aria-expanded') === 'true') fecharPainelLateral(true);
+    });
 
     /* Sistema de pastas: Workspace é a pasta base; dentro dela ficam os projetos.
        Na pasta base, "Workspace" é o local atual. Dentro de um projeto, vira link. */
