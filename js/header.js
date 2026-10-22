@@ -13,7 +13,14 @@
             <nav class="migalha" id="migalha" aria-label="Navegação"></nav>
         </div>
         <div class="topo-dir${simples ? ' solo' : ''}">
-            <button class="btn-tema" id="topo-tema" type="button"></button>
+            <div class="controle-historico" role="group" aria-label="Controle de alterações">
+                <button class="btn-historico" id="topo-desfazer" type="button" title="Desfazer" aria-label="Desfazer" disabled>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-15-6.7L3 13"></path></svg>
+                </button>
+                <button class="btn-historico" id="topo-refazer" type="button" title="Refazer" aria-label="Refazer" disabled>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 15-6.7L21 13"></path></svg>
+                </button>
+            </div>
             ${simples ? '' : '<span class="topo-visao" id="topo-visao" hidden></span>'}
             ${simples ? '' : `<label class="busca">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
@@ -27,6 +34,7 @@
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10v8M8 14h8"></path><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
                 <span>Nova pasta</span>
             </button>`}
+            <button class="btn-tema" id="topo-tema" type="button"></button>
         </div>`;
 
     /* Sistema de pastas: Workspace é a pasta base; dentro dela ficam os projetos.
@@ -103,6 +111,22 @@
         atualizarBotaoTema();
     });
     atualizarBotaoTema();
+
+    const btnDesfazer = document.getElementById('topo-desfazer');
+    const btnRefazer = document.getElementById('topo-refazer');
+    function atualizarHistorico() {
+        const historico = window.BAHUB_Historico;
+        btnDesfazer.disabled = !historico || !historico.podeDesfazer();
+        btnRefazer.disabled = !historico || !historico.podeRefazer();
+    }
+    btnDesfazer.addEventListener('click', () => {
+        if (window.BAHUB_Historico) window.BAHUB_Historico.desfazer();
+    });
+    btnRefazer.addEventListener('click', () => {
+        if (window.BAHUB_Historico) window.BAHUB_Historico.refazer();
+    });
+    window.addEventListener('bahub-historico-atualizado', atualizarHistorico);
+    atualizarHistorico();
 
     window.BAHUB_Topo = { definirAtual: montarMigalha, definirCaminho: montarCaminho };
 })();

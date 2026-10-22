@@ -6,13 +6,13 @@
     <meta name="theme-color" content="#111827">
     <title>BAHUB</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=20261022-2">
 </head>
 
 <body>
 
 <header class="topo" id="topo" data-atual=""></header>
-<script src="js/header.js"></script>
+<script src="js/header.js?v=20261022-2"></script>
 
 
 <div id="estado-vazio" style="display:none;">
@@ -182,16 +182,37 @@
 
 </div>
 
+<div class="modal-overlay" id="modalEditarKanban" onclick="if(event.target === this) fecharEdicaoKanban()">
+    <form class="modal-card modal-editar-kanban" onsubmit="salvarEdicaoKanban(event)">
+        <div class="modal-header">
+            <h2>Editar item</h2>
+            <button type="button" class="btn-fechar" onclick="fecharEdicaoKanban()" aria-label="Fechar">×</button>
+        </div>
+        <label class="campo-editar-kanban" for="kanban-edit-nome">Título</label>
+        <input id="kanban-edit-nome" class="input-inline-tabela campo-editar-input" type="text" required>
+        <label class="campo-editar-kanban" for="kanban-edit-rotulo">Rótulo</label>
+        <select id="kanban-edit-rotulo" class="select-inline-tabela campo-editar-input"></select>
+        <label class="campo-editar-kanban" for="kanban-edit-area">Área</label>
+        <select id="kanban-edit-area" class="select-inline-tabela campo-editar-input"></select>
+        <label class="campo-editar-kanban" for="kanban-edit-prazo">Prazo</label>
+        <input id="kanban-edit-prazo" class="input-inline-tabela campo-editar-input" type="date">
+        <div class="acoes-editar-kanban">
+            <button type="button" class="btn-cancelar-edicao" onclick="fecharEdicaoKanban()">Cancelar</button>
+            <button type="submit" class="btn-salvar-inline">Salvar</button>
+        </div>
+    </form>
+</div>
+
 
 <footer class="footer-bahub">
     <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
-    <span id="status-nuvem" style="color:#d1d5db;font-weight:500"></span>
+    <span id="status-nuvem" class="status-nuvem" role="img" aria-label="Status da nuvem"></span>
     <span id="email-usuario" class="email-usuario"></span>
     <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
-<script src="js/db.js?v=20261020-2"></script>
+<script src="js/db.js?v=20261022-2"></script>
 <script type="text/plain" id="app-script">
 
 let db = lerBancoDeDados();
@@ -203,6 +224,7 @@ let direcaoOrdenacao = 1;
 let pastaAtual = new URLSearchParams(location.search).get('pasta') || null;
 const preferenciasUsuario = lerPreferenciasBanco();
 let visaoAtual = preferenciasUsuario.visao === 'kanban' ? 'kanban' : 'tabela';
+let indiceEdicaoKanban = null;
 
 const ordenacaoSalva = preferenciasUsuario.ordenacao;
 if (ordenacaoSalva && ['nome', 'rotulo', 'area', 'prazo'].includes(ordenacaoSalva.tipo)) {
@@ -453,6 +475,7 @@ function calcularOrdemVisual() {
 
 
 function renderizarTabela() {
+    limparSelecaoCards();
 
     const tbody =
         document.getElementById(
@@ -722,18 +745,66 @@ function alternarMenuTabela(
 
 }
 
+function alternarMenuKanban(event, index) {
+    event.stopPropagation();
+    const menu = document.getElementById(`menu-kanban-${index}`);
+    const abrir = menu.style.display !== 'block';
+    fecharMenusFlutuantes();
+    if (abrir) {
+        menu.style.display = 'block';
+        menu.closest('.kb-card').classList.add('kb-menu-aberto');
+    }
+}
 
-window.addEventListener('scroll', () =>
-    document.querySelectorAll('.menu-tabela-flutuante')
-        .forEach(m => m.style.display = 'none'), true);
-window.onclick = () =>
-    document
-        .querySelectorAll(
-            '.menu-tabela-flutuante'
-        )
-        .forEach(
-            m => m.style.display = 'none'
-        );
+function editarNoKanban(index) {
+    const p = db[index];
+    if (!p) return;
+    indiceEdicaoKanban = index;
+    document.getElementById('kanban-edit-nome').value = p.nome || '';
+    document.getElementById('kanban-edit-rotulo').innerHTML = opcoesRotulos
+        .map(r => `<option value="${escapeHTML(r.nome)}" ${r.nome === p.rotulo ? 'selected' : ''}>${escapeHTML(r.nome)}</option>`)
+        .join('');
+    document.getElementById('kanban-edit-area').innerHTML = opcoesArea
+        .map(a => `<option value="${escapeHTML(a)}" ${a === p.area ? 'selected' : ''}>${escapeHTML(a)}</option>`)
+        .join('');
+    document.getElementById('kanban-edit-prazo').value =
+        p.prazo && p.prazo !== '---' ? p.prazo : '';
+    document.getElementById('modalEditarKanban').style.display = 'flex';
+    document.getElementById('kanban-edit-nome').focus();
+}
+
+function fecharEdicaoKanban() {
+    document.getElementById('modalEditarKanban').style.display = 'none';
+    indiceEdicaoKanban = null;
+}
+
+function salvarEdicaoKanban(event) {
+    event.preventDefault();
+    const index = indiceEdicaoKanban;
+    const nome = document.getElementById('kanban-edit-nome').value.trim();
+    if (index === null || !db[index]) return;
+    if (!nome) {
+        document.getElementById('kanban-edit-nome').focus();
+        return;
+    }
+    db[index].nome = nome;
+    db[index].rotulo = document.getElementById('kanban-edit-rotulo').value;
+    db[index].area = document.getElementById('kanban-edit-area').value;
+    db[index].prazo = document.getElementById('kanban-edit-prazo').value || '---';
+    salvarBancoDeDados(db);
+    fecharEdicaoKanban();
+    renderizarTabela();
+}
+
+function fecharMenusFlutuantes() {
+    document.querySelectorAll('.menu-tabela-flutuante, .menu-card-flutuante')
+        .forEach(m => m.style.display = 'none');
+    document.querySelectorAll('.kb-card.kb-menu-aberto')
+        .forEach(card => card.classList.remove('kb-menu-aberto'));
+}
+
+window.addEventListener('scroll', fecharMenusFlutuantes, true);
+window.onclick = fecharMenusFlutuantes;
 
 
 function abrirModal() {
@@ -830,6 +901,16 @@ document
 
 
 function ativarEdicaoCompleta(index) {
+
+    const linhaEmEdicao =
+        document.querySelector(
+            '#corpo-tabela tr.em-edicao'
+        );
+
+    if (linhaEmEdicao) {
+        if (linhaEmEdicao.id === `linha-projeto-${index}`) return;
+        renderizarTabela();
+    }
 
     const p =
         db[index];
@@ -1163,6 +1244,131 @@ window.addEventListener('scroll', () => { if (popTags) posicionarPopTags(); }, t
 
 /* ---------- Ordem personalizada: segurar e arrastar as linhas ---------- */
 /* ---------- Visão Kanban: colunas por rótulo, arraste entre colunas muda o rótulo ---------- */
+const itensSelecionados = new Set();
+let selecaoRetangular = null;
+
+function atualizarSelecaoCards() {
+    document.querySelectorAll('.kb-card[data-idx], #corpo-tabela tr[id^="linha-projeto-"]').forEach(el => {
+        const index = Number(el.dataset.idx || el.id.replace('linha-projeto-', ''));
+        el.classList.toggle('selecionado', itensSelecionados.has(index));
+    });
+}
+
+function limparSelecaoCards() {
+    itensSelecionados.clear();
+    atualizarSelecaoCards();
+}
+
+function indicesParaArrastar(index) {
+    return itensSelecionados.has(index) ? [...itensSelecionados].sort((a, b) => a - b) : [index];
+}
+
+function iniciarSelecaoRetangular(e) {
+    if (e.button !== 0 || !e.target.closest) return;
+    if (!document.body.contains(e.target) || e.target.closest(
+        '.topo, .cabecalho-pagina, .footer-bahub, .modal-overlay, .lg-overlay, .pop-tags, ' +
+        '.kb-card, .kb-col-topo, #corpo-tabela tr, thead, button, input, select, textarea, a'
+    )) return;
+    if (!e.ctrlKey && !e.metaKey) limparSelecaoCards();
+    selecaoRetangular = {
+        id: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        ativo: false,
+        manter: new Set(itensSelecionados),
+        alternar: e.ctrlKey || e.metaKey,
+        caixa: null
+    };
+}
+
+document.addEventListener('pointerdown', iniciarSelecaoRetangular);
+window.addEventListener('pointermove', e => {
+    const s = selecaoRetangular;
+    if (!s || e.pointerId !== s.id) return;
+    if (!s.ativo) {
+        if (Math.hypot(e.clientX - s.x, e.clientY - s.y) < 5) return;
+        s.ativo = true;
+        if (window.getSelection) window.getSelection().removeAllRanges();
+        s.caixa = document.createElement('div');
+        s.caixa.className = 'caixa-selecao';
+        document.body.appendChild(s.caixa);
+        document.body.classList.add('selecionando-cards');
+    }
+    const esquerda = Math.min(s.x, e.clientX), topo = Math.min(s.y, e.clientY);
+    const largura = Math.abs(e.clientX - s.x), altura = Math.abs(e.clientY - s.y);
+    Object.assign(s.caixa.style, { left: `${esquerda}px`, top: `${topo}px`, width: `${largura}px`, height: `${altura}px` });
+    const atingidos = new Set();
+    const seletor = visaoAtual === 'kanban' ? '#kanban .kb-card[data-idx]' : '#corpo-tabela tr[id^="linha-projeto-"]';
+    document.querySelectorAll(seletor).forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.right > esquerda && r.left < esquerda + largura && r.bottom > topo && r.top < topo + altura) {
+            atingidos.add(Number(el.dataset.idx || el.id.replace('linha-projeto-', '')));
+        }
+    });
+    itensSelecionados.clear();
+    s.manter.forEach(i => itensSelecionados.add(i));
+    atingidos.forEach(i => {
+        if (s.alternar && s.manter.has(i)) itensSelecionados.delete(i);
+        else itensSelecionados.add(i);
+    });
+    atualizarSelecaoCards();
+});
+window.addEventListener('pointerup', e => {
+    const s = selecaoRetangular;
+    if (!s || e.pointerId !== s.id) return;
+    selecaoRetangular = null;
+    if (s.caixa) s.caixa.remove();
+    document.body.classList.remove('selecionando-cards');
+    if (s.ativo) {
+        window.__arrastou = true;
+        setTimeout(() => { window.__arrastou = false; }, 0);
+    }
+});
+window.addEventListener('pointercancel', e => {
+    if (!selecaoRetangular || e.pointerId !== selecaoRetangular.id) return;
+    if (selecaoRetangular.caixa) selecaoRetangular.caixa.remove();
+    selecaoRetangular = null;
+    document.body.classList.remove('selecionando-cards');
+});
+document.addEventListener('click', e => {
+    if (window.__arrastou || (!e.ctrlKey && !e.metaKey)) return;
+    const item = e.target.closest && e.target.closest('.kb-card[data-idx], #corpo-tabela tr[id^="linha-projeto-"]');
+    if (!item || e.target.closest('button, a, input, select')) return;
+    const index = Number(item.dataset.idx || item.id.replace('linha-projeto-', ''));
+    if (itensSelecionados.has(index)) itensSelecionados.delete(index);
+    else itensSelecionados.add(index);
+    atualizarSelecaoCards();
+    e.preventDefault();
+    e.stopPropagation();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') limparSelecaoCards(); });
+
+function moverSelecaoParaPasta(indices, pastaId) {
+    const itens = indices.map(i => db[i]).filter(Boolean);
+    if (!itens.length || itens.some(item => item.tipo === 'pasta' && (item.id === pastaId || ehDescendente(item.id, pastaId)))) return false;
+    const conjunto = new Set(itens);
+    itens.forEach(item => { item.pai = pastaId || null; });
+    db.splice(0, db.length, ...db.filter(item => !conjunto.has(item)), ...itens);
+    limparSelecaoCards();
+    salvarPastas();
+    return true;
+}
+
+function reordenarSelecao(indices, alvoIndex, depois) {
+    const itens = indices.map(i => db[i]).filter(Boolean);
+    const alvo = db[alvoIndex];
+    if (!itens.length || !alvo || itens.includes(alvo)) return false;
+    const conjunto = new Set(itens);
+    const restante = db.filter(item => !conjunto.has(item));
+    const posicaoAlvo = restante.indexOf(alvo);
+    if (posicaoAlvo < 0) return false;
+    restante.splice(posicaoAlvo + (depois ? 1 : 0), 0, ...itens);
+    db.splice(0, db.length, ...restante);
+    limparSelecaoCards();
+    salvarPastas();
+    return true;
+}
+
 function mudarVisao(v) {
     visaoAtual = v;
     salvarPreferenciasBanco({ ...lerPreferenciasBanco(), visao: v });
@@ -1180,7 +1386,7 @@ function aplicarVisao() {
         slot.hidden = vazio;
         slot.innerHTML = `<span class="visao-toggle" role="group" aria-label="Visualização">
             <button type="button" class="${visaoAtual === 'tabela' ? 'on' : ''}" onclick="mudarVisao('tabela')">Tabela</button>
-            <button type="button" class="${kanban ? 'on' : ''}" onclick="mudarVisao('kanban')" title="Colunas por rótulo. Arraste os cards entre colunas e arraste o título da coluna para reordenar">Kanban</button></span>`;
+            <button type="button" class="${kanban ? 'on' : ''}" onclick="mudarVisao('kanban')" title="Arraste em uma área vazia para selecionar vários cards; Ctrl+clique alterna a seleção. Arraste a seleção para outra coluna ou pasta.">Kanban</button></span>`;
     }
     kb.hidden = vazio || !kanban;
     if (kanban && !vazio) {
@@ -1197,7 +1403,11 @@ function htmlCardKanban(i) {
     return `<article class="kb-card${pasta ? ' kb-pasta' : ''}" id="kb-card-${i}" data-idx="${i}" style="--cor-card:${cor}">
         <div class="kb-card-topo">
             <span class="kb-titulo">${pasta ? '📁 ' : ''}${escapeHTML(p.nome)}${htmlDetalhesInline(p)}</span>
-            <span class="alca-arrastar kb-alca" title="Arraste para mover">⠿</span>
+            <button type="button" class="btn-card-opcoes" onclick="alternarMenuKanban(event, ${i})" title="Opções" aria-label="Opções de ${escapeHTML(p.nome)}">⋮</button>
+        </div>
+        <div class="menu-card-flutuante" id="menu-kanban-${i}">
+            <button type="button" onclick="editarNoKanban(${i})">Editar</button>
+            <button type="button" onclick="${pasta ? 'excluirPasta' : 'deletarProjeto'}(${i})" style="color:#ff4d4d">Deletar</button>
         </div>
         ${prazo ? `<div class="kb-meta"><span class="kb-prazo">📅 ${escapeHTML(prazo)}</span></div>` : ''}
         <div class="kb-tags">${(p.tags || []).map(htmlTagBolha).join('')}<button type="button" class="btn-tag-mais" onclick="abrirPopTags(event, ${i})" title="Adicionar tag" aria-label="Adicionar tag">+</button></div>
@@ -1211,6 +1421,7 @@ function ordemColunas() {
 }
 
 function renderizarKanban() {
+    limparSelecaoCards();
     const kb = document.getElementById('kanban');
     if (!kb) return;
     validarPastaAtual();
@@ -1250,8 +1461,10 @@ document.addEventListener('pointerdown', e => {
     if (visaoAtual !== 'kanban' || e.button > 0 || !e.target.closest) return;
     const card = e.target.closest('.kb-card');
     if (!card || e.target.closest('button, a, input')) return;
-    if (e.pointerType === 'touch' && !e.target.closest('.kb-alca')) return;   // no toque, só pela alça
-    arrastoKb = { card, id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false, col: null, dentro: undefined };
+    const index = Number(card.dataset.idx);
+    const indices = indicesParaArrastar(index);
+    if (!itensSelecionados.has(index)) limparSelecaoCards();
+    arrastoKb = { card, indices, id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false, col: null, dentro: undefined };
 });
 
 window.addEventListener('pointermove', e => {
@@ -1260,12 +1473,23 @@ window.addEventListener('pointermove', e => {
     if (!a.ativo) {
         if (Math.hypot(e.clientX - a.x0, e.clientY - a.y0) < 6) return;
         a.ativo = true;
-        a.card.classList.add('arrastando-origem');
+        a.indices.forEach(i => document.getElementById(`kb-card-${i}`)?.classList.add('arrastando-origem', 'selecionado'));
+        a.indices.forEach(i => itensSelecionados.add(i));
         document.body.classList.add('arrastando');
         if (window.getSelection) window.getSelection().removeAllRanges();
-        const g = document.createElement('div');
-        g.className = 'ghost-arrasto';
-        g.textContent = a.card.querySelector('.kb-titulo').textContent.trim();
+        const g = a.card.cloneNode(true);
+        g.classList.remove('arrastando-origem', 'selecionado');
+        g.classList.add('ghost-arrasto');
+        g.removeAttribute('id');
+        g.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+        g.setAttribute('aria-hidden', 'true');
+        g.style.width = `${a.card.getBoundingClientRect().width}px`;
+        if (a.indices.length > 1) {
+            const quantidade = document.createElement('span');
+            quantidade.className = 'ghost-arrasto-count';
+            quantidade.textContent = `+${a.indices.length - 1}`;
+            g.appendChild(quantidade);
+        }
         document.body.appendChild(g);
         a.ghost = g;
     }
@@ -1283,9 +1507,10 @@ window.addEventListener('pointermove', e => {
     a.alvo = null; a.col = null; a.dentro = undefined;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el || !el.closest) return;
-    const origem = db[Number(a.card.dataset.idx)];
-    const podeIrPara = pastaId => !(origem.tipo === 'pasta' && (origem.id === pastaId || ehDescendente(origem.id, pastaId)))
-        && (origem.pai || null) !== (pastaId || null);
+    const podeIrPara = pastaId => a.indices.every(i => {
+        const origem = db[i];
+        return origem && !(origem.tipo === 'pasta' && (origem.id === pastaId || ehDescendente(origem.id, pastaId)));
+    });
 
     const zona = el.closest('[data-drop-pasta]');             // "voltar", Workspace e pastas do caminho
     if (zona) {
@@ -1294,7 +1519,7 @@ window.addEventListener('pointermove', e => {
         return;
     }
     const alvo = el.closest('.kb-card');
-    if (alvo && alvo !== a.card) {
+    if (alvo && !a.indices.includes(Number(alvo.dataset.idx))) {
         const r = alvo.getBoundingClientRect();
         const rel = (e.clientY - r.top) / r.height;
         if (alvo.classList.contains('kb-pasta') && rel > .25 && rel < .75) {   // meio da pasta = colocar dentro
@@ -1318,31 +1543,26 @@ function finalizarArrastoKb(e, cancelar) {
     if (!a.ativo) return;
     if (a.ghost) a.ghost.remove();
     document.body.classList.remove('arrastando');
-    a.card.classList.remove('arrastando-origem');
+    a.indices.forEach(i => document.getElementById(`kb-card-${i}`)?.classList.remove('arrastando-origem'));
     document.querySelectorAll('.drop-acima, .drop-abaixo, .drop-dentro, .drop-col')
         .forEach(x => x.classList.remove('drop-acima', 'drop-abaixo', 'drop-dentro', 'drop-col'));
     window.__arrastou = true;                                  // evita abrir o card ao soltar
     setTimeout(() => { window.__arrastou = false; }, 0);
     if (cancelar) return;
 
-    const de = Number(a.card.dataset.idx);
-    if (a.dentro !== undefined) { moverParaPasta(de, a.dentro); return; }
-    const item = db[de];
+    if (a.dentro !== undefined) { moverSelecaoParaPasta(a.indices, a.dentro); return; }
     if (a.alvo) {                                              // solto antes/depois de outro card: assume a coluna dele
         const para = Number(a.alvo.dataset.idx);
-        item.rotulo = db[para].rotulo || opcoesRotulos[0].nome;
-        db.splice(de, 1);
-        let pos = para > de ? para - 1 : para;
-        if (a.depois) pos += 1;
-        db.splice(pos, 0, item);
+        const rotulo = db[para].rotulo || opcoesRotulos[0].nome;
+        a.indices.forEach(i => { db[i].rotulo = rotulo; });
+        reordenarSelecao(a.indices, para, a.depois);
     } else if (a.col) {                                        // solto na coluna: vai para o fim dela
-        item.rotulo = a.col.dataset.rotulo;
-        db.splice(de, 1);
-        db.push(item);
+        a.indices.forEach(i => { db[i].rotulo = a.col.dataset.rotulo; });
+        limparSelecaoCards();
+        salvarPastas();
     } else {
         return;
     }
-    salvarPastas();                                            // salva, envia à nuvem e redesenha
 }
 window.addEventListener('pointerup', e => finalizarArrastoKb(e, false));
 window.addEventListener('pointercancel', e => finalizarArrastoKb(e, true));
@@ -1560,18 +1780,21 @@ function atualizarBarraOrdem() {
     barra.innerHTML = ordenacaoAtual
         ? `<span>Visualização ordenada por <strong>${NOMES_COLUNAS[ordenacaoAtual]}</strong> ${direcaoOrdenacao === 1 ? '↑' : '↓'} · Arraste desativado</span>
            <span class="barra-acoes"><button type="button" class="btn-ordem" onclick="adotarOrdemAtual()">Salvar como minha ordem</button><button type="button" class="btn-ordem" onclick="usarOrdemPersonalizada()">Voltar à ordem personalizada</button></span>`
-        : '<span>⠿ Ordem personalizada · arraste para reorganizar ou solte sobre uma pasta</span>';
+        : '<span>⠿ Ordem personalizada · arraste em uma área vazia para selecionar vários; Ctrl+clique alterna a seleção</span>';
 }
 
 let arrasto = null;
 
 document.addEventListener('pointerdown', e => {
-    if (ordenacaoAtual || e.button > 0 || !e.target.closest) return;
+    if (e.button > 0 || !e.target.closest) return;
     const tr = e.target.closest('#corpo-tabela tr');
     if (!tr || tr.classList.contains('em-edicao') || !tr.id.startsWith('linha-projeto-')) return;
     if (e.target.closest('button, input, select, a, .col-acoes')) return;
     if (e.pointerType === 'touch' && !e.target.closest('.alca-arrastar')) return;   // no toque, só pela alça
-    arrasto = { tr, id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false };
+    const index = Number(tr.id.replace('linha-projeto-', ''));
+    const indices = indicesParaArrastar(index);
+    if (!itensSelecionados.has(index)) limparSelecaoCards();
+    arrasto = { tr, indices, id: e.pointerId, x0: e.clientX, y0: e.clientY, ativo: false, ghost: null, alvo: null, depois: false, dentro: undefined };
 });
 
 window.addEventListener('pointermove', e => {
@@ -1579,13 +1802,16 @@ window.addEventListener('pointermove', e => {
     if (!arrasto.ativo) {
         if (Math.hypot(e.clientX - arrasto.x0, e.clientY - arrasto.y0) < 6) return;
         arrasto.ativo = true;
-        arrasto.tr.classList.add('arrastando-origem');
+        arrasto.indices.forEach(i => document.getElementById(`linha-projeto-${i}`)?.classList.add('arrastando-origem', 'selecionado'));
+        arrasto.indices.forEach(i => itensSelecionados.add(i));
         document.body.classList.add('arrastando');
         if (window.getSelection) window.getSelection().removeAllRanges();
         const nome = arrasto.tr.querySelector('.titulo-linha');
         const g = document.createElement('div');
         g.className = 'ghost-arrasto';
-        g.textContent = nome ? nome.textContent.trim() : 'Projeto';
+        g.textContent = arrasto.indices.length > 1
+            ? `${arrasto.indices.length} itens selecionados`
+            : (nome ? nome.textContent.trim() : 'Projeto');
         document.body.appendChild(g);
         arrasto.ghost = g;
     }
@@ -1601,9 +1827,10 @@ window.addEventListener('pointermove', e => {
     arrasto.dentro = undefined;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el || !el.closest) return;
-    const origem = db[Number(arrasto.tr.id.replace('linha-projeto-', ''))];
-    const podeIrPara = pastaId => !(origem.tipo === 'pasta' && (origem.id === pastaId || ehDescendente(origem.id, pastaId)))
-        && (origem.pai || null) !== (pastaId || null);
+    const podeIrPara = pastaId => arrasto.indices.every(i => {
+        const origem = db[i];
+        return origem && !(origem.tipo === 'pasta' && (origem.id === pastaId || ehDescendente(origem.id, pastaId)));
+    });
 
     const zona = el.closest('[data-drop-pasta]');          // linha "voltar", Workspace e pastas do caminho
     if (zona) {
@@ -1612,7 +1839,7 @@ window.addEventListener('pointermove', e => {
         return;
     }
     const alvo = el.closest('#corpo-tabela tr');
-    if (!alvo || alvo === arrasto.tr || !alvo.id.startsWith('linha-projeto-')) return;
+    if (!alvo || !alvo.id.startsWith('linha-projeto-') || arrasto.indices.includes(Number(alvo.id.replace('linha-projeto-', '')))) return;
     const r = alvo.getBoundingClientRect();
     const rel = (e.clientY - r.top) / r.height;
     if (alvo.classList.contains('linha-pasta') && rel > .25 && rel < .75) {   // meio da pasta = colocar dentro
@@ -1632,22 +1859,16 @@ function finalizarArrasto(e, cancelar) {
     if (!a.ativo) return;
     if (a.ghost) a.ghost.remove();
     document.body.classList.remove('arrastando');
-    a.tr.classList.remove('arrastando-origem');
+    a.indices.forEach(i => document.getElementById(`linha-projeto-${i}`)?.classList.remove('arrastando-origem'));
     document.querySelectorAll('.drop-acima, .drop-abaixo, .drop-dentro').forEach(r => r.classList.remove('drop-acima', 'drop-abaixo', 'drop-dentro'));
     window.__arrastou = true;                       // evita abrir o projeto ao soltar
     setTimeout(() => { window.__arrastou = false; }, 0);
     if (cancelar) return;
-    const de = Number(a.tr.id.replace('linha-projeto-', ''));
-    if (a.dentro !== undefined) { moverParaPasta(de, a.dentro); return; }
+    if (a.dentro !== undefined) { moverSelecaoParaPasta(a.indices, a.dentro); return; }
+    if (ordenacaoAtual) return;
     if (!a.alvo) return;
     const para = Number(a.alvo.id.replace('linha-projeto-', ''));
-    const [item] = db.splice(de, 1);
-    let pos = para > de ? para - 1 : para;
-    if (a.depois) pos += 1;
-    db.splice(pos, 0, item);
-    salvarBancoDeDados(db);                          // a ordem personalizada fica salva (e vai para a nuvem)
-    if (typeof enviarAgora === 'function') enviarAgora();
-    renderizarTabela();
+    reordenarSelecao(a.indices, para, a.depois);
 }
 window.addEventListener('pointerup', e => finalizarArrasto(e, false));
 window.addEventListener('pointercancel', e => finalizarArrasto(e, true));
@@ -1667,6 +1888,11 @@ window.aoNovoRegistro = abrirModal;
 window.aoNovaPasta = criarPasta;
 const _renderizarTabelaBase = renderizarTabela;
 renderizarTabela = function () { _renderizarTabelaBase(); atualizarBarraOrdem(); atualizarCaminho(); aplicarBusca(); aplicarVisao(); };
+
+window.addEventListener('bahub-dados-restaurados', e => {
+    db = e.detail.dados;
+    renderizarTabela();
+});
 
 renderizarTabela();
 

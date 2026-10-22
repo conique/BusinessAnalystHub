@@ -6,12 +6,12 @@
     <meta name="theme-color" content="#111827">
     <title>BAHUB - Timeline do Projeto</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=20261022-2">
 </head>
 <body>
 
     <header class="topo" id="topo" data-atual="" data-simples="true"></header>
-<script src="js/header.js"></script>
+<script src="js/header.js?v=20261022-2"></script>
 <div class="cabecalho-pagina">
         <a href="index.html" class="btn-voltar">‹</a>
 
@@ -100,13 +100,13 @@
 
     <footer class="footer-bahub">
     <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
-    <span id="status-nuvem" style="color:#d1d5db;font-weight:500"></span>
+    <span id="status-nuvem" class="status-nuvem" role="img" aria-label="Status da nuvem"></span>
     <span id="email-usuario" class="email-usuario"></span>
     <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
-<script src="js/db.js?v=20261020-2"></script>
+<script src="js/db.js?v=20261022-2"></script>
 <script type="text/plain" id="app-script">
         /* =========================================================
            CONFIGURAÇÃO DO PROJETO
@@ -1944,6 +1944,16 @@ renderizarTimeline = async function () {
     sincronizarMinimizar();
     ajustarTodasLegendas();
 };
+
+window.addEventListener('bahub-dados-restaurados', e => {
+    db = e.detail.dados;
+    projetoAtual = db[projetoId];
+    if (!projetoAtual) {
+        window.location.href = 'index.html';
+        return;
+    }
+    renderizarTimeline();
+});
 
 (async function() {
 
