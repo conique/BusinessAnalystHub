@@ -1,0 +1,61 @@
+-- =====================================================================
+-- 03 — BACKUP, RESSINCRONIZAÇÃO E ROLLBACK  (NADA aqui roda sozinho)
+-- Todos os comandos estão comentados. Rode só o bloco de que precisar,
+-- um de cada vez, depois de ler o aviso.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- A) BACKUP da tabela legada (rode ANTES de publicar o app novo).
+--    Cria uma tabela NOVA; a bahub_dados não é alterada.
+--    O RLS ligado e sem política impede qualquer acesso pela API.
+-- ---------------------------------------------------------------------
+-- create table public.bahub_dados_backup_20261023 as table public.bahub_dados;
+-- alter table public.bahub_dados_backup_20261023 enable row level security;
+
+-- ---------------------------------------------------------------------
+-- B) RESSINCRONIZAR a cópia (use ANTES de publicar o app novo, só se o
+--    diagnóstico 01 mostrar "dados DIFERENTES da tabela legada" > 0, ou
+--    seja, o app antigo gravou depois da cópia).
+--    ATENÇÃO: sobrescreve bahub_workspace_data dos workspaces iniciais com o
+--    conteúdo atual da bahub_dados. NÃO use depois que o app novo estiver no ar,
+--    senão você apaga o que foi feito nos workspaces.
+-- ---------------------------------------------------------------------
+-- update public.bahub_workspace_data wd
+--    set dados = d.dados, atualizado_em = now()
+--   from public.bahub_workspaces w
+--   join public.bahub_dados d on d.user_id = w.legacy_user_id
+--  where wd.workspace_id = w.id
+--    and wd.dados::jsonb is distinct from d.dados::jsonb;
+
+-- ---------------------------------------------------------------------
+-- C) ROLLBACK do app
+--    1) Volte o front-end para o commit anterior (git revert / redeploy). O app
+--       antigo lê e grava em bahub_dados, que continua intacta.
+--    2) O que foi feito SÓ nos workspaces depois da publicação não existe em
+--       bahub_dados. Se precisar levar o workspace inicial de volta, use o bloco
+--       D (só para os workspaces iniciais, ou seja, legacy_user_id preenchido).
+--    3) Os workspaces extras e as tabelas novas podem ficar como estão: o app
+--       antigo não os usa.
+-- ---------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------
+-- D) Exportar o workspace inicial de volta para bahub_dados (SÓ em rollback).
+--    ALTERA bahub_dados: faça o backup do bloco A antes.
+-- ---------------------------------------------------------------------
+-- update public.bahub_dados d
+--    set dados = wd.dados, atualizado_em = now()
+--   from public.bahub_workspaces w
+--   join public.bahub_workspace_data wd on wd.workspace_id = w.id
+--  where w.legacy_user_id = d.user_id
+--    and wd.dados::jsonb is distinct from d.dados::jsonb;
+
+-- ---------------------------------------------------------------------
+-- E) OPCIONAL: gatilho para atualizar atualizado_em em qualquer UPDATE
+--    (o app já grava um novo atualizado_em a cada envio; isto só cobre
+--    alterações feitas fora do app, como no SQL Editor).
+-- ---------------------------------------------------------------------
+-- create or replace function public.bahub_workspace_data_touch() returns trigger
+-- language plpgsql set search_path = '' as $$
+-- begin new.atualizado_em := now(); return new; end $$;
+-- create trigger bahub_workspace_data_touch before update on public.bahub_workspace_data
+--   for each row execute function public.bahub_workspace_data_touch();

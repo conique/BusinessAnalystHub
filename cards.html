@@ -6,12 +6,12 @@
     <meta name="theme-color" content="#111827">
     <title>BAHUB - Timeline do Projeto</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
-    <link rel="stylesheet" href="css/style.css?v=20261022-6">
+    <link rel="stylesheet" href="css/style.css?v=20261023-20">
 </head>
-<body>
+<body class="fundo-original">
 
     <header class="topo" id="topo" data-atual="" data-simples="true"></header>
-<script src="js/header.js?v=20261022-4"></script>
+<script src="js/header.js?v=20261023-4"></script>
 <div class="cabecalho-pagina">
         <a href="index.html" class="btn-voltar">‹</a>
 
@@ -106,7 +106,7 @@
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
-<script src="js/db.js?v=20261022-2"></script>
+<script src="js/db.js?v=20261023-12"></script>
 <script type="text/plain" id="app-script">
         /* =========================================================
            CONFIGURAÇÃO DO PROJETO
@@ -1972,6 +1972,7 @@ window.addEventListener('bahub-dados-restaurados', e => {
     </script>
 <script>
 BAHUB_PRONTO.then(() => {
+    if (window.BAHUB_REDIRECIONANDO_WORKSPACES) return;
     const s = document.createElement('script');
     s.textContent = document.getElementById('app-script').textContent;
     document.body.appendChild(s);

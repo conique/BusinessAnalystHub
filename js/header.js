@@ -12,7 +12,7 @@
             <button class="btn-menu-lateral" id="topo-menu-lateral" type="button" title="Abrir painel lateral" aria-label="Abrir painel lateral" aria-expanded="false" aria-controls="painel-lateral">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-            <a class="marca-ba" href="index.html" data-pasta="" data-drop-pasta="" title="Início">BA</a>
+            <a class="marca-ba" href="workspaces.html" data-pasta="" data-drop-pasta="" title="Workspaces" aria-label="Voltar para workspaces">BA</a>
             <nav class="migalha" id="migalha" aria-label="Navegação"></nav>
         </div>
         <div class="topo-dir${simples ? ' solo' : ''}">
@@ -51,7 +51,9 @@
             <h2>Workspaces</h2>
             <button class="btn-fechar-painel" id="fechar-painel-lateral" type="button" aria-label="Fechar painel lateral">×</button>
         </div>
-        <p class="painel-lateral-vazio">A navegação entre workspaces aparecerá aqui.</p>`;
+        <div class="painel-ws" id="painel-ws">
+            <p class="painel-lateral-vazio">Os workspaces da sua conta aparecem aqui quando a nuvem estiver ativa.</p>
+        </div>`;
     const fundoPainel = document.createElement('button');
     fundoPainel.className = 'fundo-painel-lateral';
     fundoPainel.type = 'button';
@@ -99,16 +101,18 @@
     /* Sistema de pastas: Workspace é a pasta base; dentro dela ficam os projetos.
        Na pasta base, "Workspace" é o local atual. Dentro de um projeto, vira link. */
     const migalha = document.getElementById('migalha');
+    let nomeRaiz = 'Workspace', segsAtuais = [];
     /* Caminho em pastas: segmentos = [{ nome, href?, pasta? }]; o último (sem href) é o local atual.
        Os links levam data-drop-pasta, para soltar itens arrastados em cima deles. */
     function montarCaminho(segs) {
+        segsAtuais = segs;
         migalha.innerHTML = '';
         const sep = () => { const e = document.createElement('span'); e.className = 'sep'; e.textContent = '/'; return e; };
         migalha.appendChild(sep());
         if (!segs.length) {
             const raiz = document.createElement('span');
             raiz.className = 'migalha-atual';
-            raiz.textContent = 'Workspace';
+            raiz.textContent = nomeRaiz;
             migalha.appendChild(raiz);
             return;
         }
@@ -117,7 +121,7 @@
         raizLink.href = 'index.html';
         raizLink.dataset.pasta = '';
         raizLink.dataset.dropPasta = '';
-        raizLink.textContent = 'Workspace';
+        raizLink.textContent = nomeRaiz;
         migalha.appendChild(raizLink);
         segs.forEach(s => {
             migalha.appendChild(sep());
@@ -186,6 +190,73 @@
     });
     window.addEventListener('bahub-historico-atualizado', atualizarHistorico);
     atualizarHistorico();
+
+    /* Workspaces da conta: lista no painel lateral e nome do workspace aberto no início do caminho. */
+    const painelWs = document.getElementById('painel-ws');
+    function desenharWorkspaces() {
+        const api = window.BAHUB_Workspaces;
+        if (!api || !api.atual) return;
+        nomeRaiz = api.atual.nome;
+        montarCaminho(segsAtuais);
+        painelWs.innerHTML = '';
+        const lista = document.createElement('ul');
+        lista.className = 'ws-painel-lista';
+        api.lista.forEach(w => {
+            const li = document.createElement('li');
+            li.className = 'ws-painel-linha';
+            const b = document.createElement('button');
+            const ativo = w.id === api.atual.id;
+            b.type = 'button';
+            b.className = 'ws-painel-item' + (ativo ? ' ativo' : '');
+            if (ativo) b.setAttribute('aria-current', 'true');
+            const av = document.createElement('span');
+            av.className = 'ws-painel-inicial';
+            av.textContent = (w.nome.trim()[0] || '?').toUpperCase();
+            const nome = document.createElement('span');
+            nome.className = 'ws-painel-nome';
+            nome.textContent = w.nome;
+            b.append(av, nome);
+            b.addEventListener('click', () => {
+                if (ativo) { fecharPainelLateral(true); return; }
+                b.disabled = true;
+                Promise.resolve(api.selecionar(w.id)).then(ok => { if (ok === false) b.disabled = false; });
+            });
+            li.appendChild(b);
+            const renomear = document.createElement('button');
+            renomear.type = 'button';
+            renomear.className = 'ws-painel-renomear';
+            renomear.textContent = '✎';
+            renomear.title = 'Renomear ' + w.nome;
+            renomear.setAttribute('aria-label', 'Renomear ' + w.nome);
+            renomear.addEventListener('click', e => {
+                e.stopPropagation();
+                renomear.disabled = true;
+                Promise.resolve(api.renomear(w.id))
+                    .catch(erro => { console.error(erro); alert('Não foi possível renomear o workspace: ' + (erro.message || erro)); })
+                    .finally(() => { renomear.disabled = false; });
+            });
+            li.appendChild(renomear);
+            lista.appendChild(li);
+        });
+        const acoes = document.createElement('div');
+        acoes.className = 'ws-painel-acoes';
+        const novo = document.createElement('button');
+        novo.type = 'button';
+        novo.className = 'ws-painel-acao principal';
+        novo.textContent = '+ Novo workspace';
+        novo.addEventListener('click', () => { fecharPainelLateral(false); api.criarNovo(); });
+        acoes.append(novo);
+        painelWs.append(lista, acoes);
+    }
+    window.addEventListener('bahub-workspace-atualizado', desenharWorkspaces);
+    desenharWorkspaces();
+
+    document.querySelector('.marca-ba').addEventListener('click', e => {
+        const api = window.BAHUB_Workspaces;
+        if (!api || typeof api.telaInicial !== 'function') return;
+        e.preventDefault();
+        api.telaInicial();
+    });
 
     window.BAHUB_Topo = { definirAtual: montarMigalha, definirCaminho: montarCaminho };
 })();

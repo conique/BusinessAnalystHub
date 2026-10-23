@@ -6,13 +6,13 @@
     <meta name="theme-color" content="#111827">
     <title>BAHUB</title>
     <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
-    <link rel="stylesheet" href="css/style.css?v=20261022-6">
+    <link rel="stylesheet" href="css/style.css?v=20261023-20">
 </head>
 
-<body>
+<body class="fundo-original">
 
 <header class="topo" id="topo" data-atual=""></header>
-<script src="js/header.js?v=20261022-4"></script>
+<script src="js/header.js?v=20261023-4"></script>
 
 
 <div id="estado-vazio" style="display:none;">
@@ -212,7 +212,7 @@
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
-<script src="js/db.js?v=20261022-2"></script>
+<script src="js/db.js?v=20261023-12"></script>
 <script type="text/plain" id="app-script">
 
 let db = lerBancoDeDados();
@@ -664,6 +664,7 @@ function renderizarTabela() {
                         Editar
                     </button>
 
+                    <button onclick="moverProjetoParaWorkspace(${index})">Mover para workspace…</button>
 
                     <button
                         onclick="${projeto.tipo === 'pasta' ? 'excluirPasta' : 'deletarProjeto'}(${index})"
@@ -700,6 +701,53 @@ function escapeHTML(v) {
             }[c])
         );
 
+}
+
+async function moverProjetoParaWorkspace(index) {
+    const api = window.BAHUB_Workspaces;
+    const item = db[index];
+    if (!api || !item) return;
+    const destinos = api.lista.filter(ws => ws.id !== api.atual.id);
+    if (!destinos.length) {
+        alert('Crie outro workspace antes de mover este item.');
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'lg-overlay';
+    overlay.innerHTML = `<div class="lg-card" role="dialog" aria-modal="true" aria-labelledby="ws-mover-tit">
+        <div class="lg-logo">↗</div><h2 id="ws-mover-tit">${item.tipo === 'pasta' ? 'Mover pasta' : 'Mover projeto'}</h2>
+        <p class="lg-sub">“${escapeHTML(item.nome)}” será movido para outro workspace.</p>
+        <label>Workspace de destino<select id="ws-mover-destino">${destinos.map(ws =>
+            `<option value="${escapeHTML(ws.id)}">${escapeHTML(ws.nome)}</option>`).join('')}</select></label>
+        <p class="lg-msg" role="alert"></p>
+        <button class="lg-principal" id="ws-mover-ok" type="button">${item.tipo === 'pasta' ? 'Mover pasta' : 'Mover projeto'}</button>
+        <div class="lg-links"><button id="ws-mover-cancelar" type="button">Cancelar</button></div></div>`;
+    document.body.appendChild(overlay);
+    const fechar = () => { document.removeEventListener('keydown', tecla); overlay.remove(); };
+    const tecla = e => { if (e.key === 'Escape') fechar(); };
+    document.addEventListener('keydown', tecla);
+    overlay.querySelector('#ws-mover-cancelar').onclick = fechar;
+    overlay.querySelector('#ws-mover-ok').onclick = async () => {
+        const btn = overlay.querySelector('#ws-mover-ok');
+        const destinoId = overlay.querySelector('#ws-mover-destino').value;
+        const destino = destinos.find(ws => ws.id === destinoId);
+        if (!destino || !confirm(`Mover “${item.nome}” para “${destino.nome}”?`)) return;
+        btn.disabled = true;
+        try {
+            await api.transferirProjeto(db, index, destinoId);
+            fechar();
+        } catch (erro) {
+            console.error(erro);
+            if (erro.destinoGravado) {
+                fechar();
+                alert(erro.message);
+                return;
+            }
+            overlay.querySelector('.lg-msg').textContent = erro.message || `Não foi possível mover ${item.tipo === 'pasta' ? 'a pasta' : 'o projeto'}.`;
+            btn.disabled = false;
+        }
+    };
 }
 
 
@@ -751,8 +799,27 @@ function alternarMenuKanban(event, index) {
     const abrir = menu.style.display !== 'block';
     fecharMenusFlutuantes();
     if (abrir) {
+        const botao = event.currentTarget;
+        document.body.appendChild(menu);
         menu.style.display = 'block';
-        menu.closest('.kb-card').classList.add('kb-menu-aberto');
+        menu.style.position = 'fixed';
+
+        const caixa = botao.getBoundingClientRect();
+        const margem = 8;
+        const largura = menu.offsetWidth;
+        const altura = menu.offsetHeight;
+        const esquerda = Math.max(margem, Math.min(
+            caixa.right - largura,
+            window.innerWidth - largura - margem
+        ));
+        const abaixo = window.innerHeight - caixa.bottom - margem;
+        const topo = altura <= abaixo || caixa.top < altura + margem
+            ? Math.min(caixa.bottom + 6, window.innerHeight - altura - margem)
+            : caixa.top - altura - 6;
+
+        menu.style.left = `${esquerda}px`;
+        menu.style.right = 'auto';
+        menu.style.top = `${Math.max(margem, topo)}px`;
     }
 }
 
@@ -798,9 +865,20 @@ function salvarEdicaoKanban(event) {
 
 function fecharMenusFlutuantes() {
     document.querySelectorAll('.menu-tabela-flutuante, .menu-card-flutuante')
-        .forEach(m => m.style.display = 'none');
-    document.querySelectorAll('.kb-card.kb-menu-aberto')
-        .forEach(card => card.classList.remove('kb-menu-aberto'));
+        .forEach(menu => {
+            menu.style.display = 'none';
+            if (!menu.id.startsWith('menu-kanban-') || menu.parentElement !== document.body) return;
+
+            const indice = menu.id.slice('menu-kanban-'.length);
+            const card = document.getElementById(`kb-card-${indice}`);
+            const topo = card && card.querySelector('.kb-card-topo');
+            if (topo) topo.insertAdjacentElement('afterend', menu);
+
+            menu.style.position = '';
+            menu.style.left = '';
+            menu.style.right = '';
+            menu.style.top = '';
+        });
 }
 
 window.addEventListener('scroll', fecharMenusFlutuantes, true);
@@ -1407,6 +1485,7 @@ function htmlCardKanban(i) {
         </div>
         <div class="menu-card-flutuante" id="menu-kanban-${i}">
             <button type="button" onclick="editarNoKanban(${i})">Editar</button>
+            <button type="button" onclick="moverProjetoParaWorkspace(${i})">Mover para workspace…</button>
             <button type="button" onclick="${pasta ? 'excluirPasta' : 'deletarProjeto'}(${i})" style="color:#ff4d4d">Deletar</button>
         </div>
         ${prazo ? `<div class="kb-meta"><span class="kb-prazo">📅 ${escapeHTML(prazo)}</span></div>` : ''}
@@ -1421,6 +1500,7 @@ function ordemColunas() {
 }
 
 function renderizarKanban() {
+    fecharMenusFlutuantes();
     limparSelecaoCards();
     const kb = document.getElementById('kanban');
     if (!kb) return;
@@ -1899,6 +1979,7 @@ renderizarTabela();
 </script>
 <script>
 BAHUB_PRONTO.then(() => {
+    if (window.BAHUB_REDIRECIONANDO_WORKSPACES) return;
     const s = document.createElement('script');
     s.textContent = document.getElementById('app-script').textContent;
     document.body.appendChild(s);
