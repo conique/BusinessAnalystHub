@@ -1,18 +1,18 @@
-/* BAHUB — dados no Supabase por workspace, com cache local (localStorage + IndexedDB)
-   Cada conta pode ter vários workspaces (bahub_workspaces); os dados de cada um ficam em
-   bahub_workspace_data, e o cache local usa chaves com o id do workspace.
-   A tabela antiga bahub_dados NÃO é alterada por este código (só é lida, uma vez, para
+/* Planora — dados no Supabase por workspace, com cache local (localStorage + IndexedDB)
+   Cada conta pode ter vários workspaces (Planora_workspaces); os dados de cada um ficam em
+   Planora_workspace_data, e o cache local usa chaves com o id do workspace.
+   A tabela antiga Planora_dados NÃO é alterada por este código (só é lida, uma vez, para
    trazer para um workspace quem ainda não foi copiado — veja MIGRAR_LEGADO_SOB_DEMANDA). */
-const CHAVE_DB = 'bahub_db';
-const CHAVE_PREFERENCIAS = 'bahub_preferencias';
+const CHAVE_DB = 'Planora_db';
+const CHAVE_PREFERENCIAS = 'Planora_preferencias';
 const BUCKET = 'midias';
-const PEND_FLAG = 'bahub_pendente';
-const TABELA_WS = 'bahub_workspaces';
-const TABELA_DADOS = 'bahub_workspace_data';
-const TABELA_LEGADO = 'bahub_dados';          // somente leitura
-const MIGRAR_LEGADO_SOB_DEMANDA = true;       // desligue quando a bahub_dados for aposentada
-const SESSAO_WS = 'bahub_ws_ativo';           // sessionStorage: workspace aberto nesta aba
-const ULTIMO_WS = 'bahub_ultimo_ws';          // localStorage: último workspace usado (por usuário)
+const PEND_FLAG = 'Planora_pendente';
+const TABELA_WS = 'Planora_workspaces';
+const TABELA_DADOS = 'Planora_workspace_data';
+const TABELA_LEGADO = 'Planora_dados';          // somente leitura
+const MIGRAR_LEGADO_SOB_DEMANDA = true;       // desligue quando a Planora_dados for aposentada
+const SESSAO_WS = 'Planora_ws_ativo';           // sessionStorage: workspace aberto nesta aba
+const ULTIMO_WS = 'Planora_ultimo_ws';          // localStorage: último workspace usado (por usuário)
 let seq = 0;
 let sb = null, usuario = null, versao = null, timer = null, fila = Promise.resolve(), ultimoStatus = '';
 let workspaceAtual = null, listaWorkspaces = [];
@@ -32,16 +32,16 @@ function lerPreferenciasBanco() {
     } catch (e) { /* migra preferências antigas */ }
 
     const preferencias = {};
-    const visao = localStorage.getItem('bahub_visao');
+    const visao = localStorage.getItem('Planora_visao');
     if (visao === 'tabela' || visao === 'kanban') preferencias.visao = visao;
     try {
-        const ordenacao = JSON.parse(localStorage.getItem('bahub_ordenacao'));
+        const ordenacao = JSON.parse(localStorage.getItem('Planora_ordenacao'));
         if (ordenacao && ['nome', 'rotulo', 'area', 'prazo'].includes(ordenacao.tipo)) {
             preferencias.ordenacao = { tipo: ordenacao.tipo, dir: ordenacao.dir === -1 ? -1 : 1 };
         }
     } catch (e) { /* sem ordenação antiga salva */ }
     try {
-        const colunas = JSON.parse(localStorage.getItem('bahub_kanban_colunas'));
+        const colunas = JSON.parse(localStorage.getItem('Planora_kanban_colunas'));
         if (Array.isArray(colunas)) preferencias.kanbanColunas = colunas;
     } catch (e) { /* sem ordem antiga de colunas salva */ }
     localStorage.setItem(chavePreferencias(), JSON.stringify(preferencias));
@@ -77,7 +77,7 @@ function carregarDadosPersistidos(dados) {
 function montarDadosPersistidos() {
     return { itens: lerBancoDeDados(), preferencias: lerPreferenciasBanco() };
 }
-const CHAVE_HISTORICO = 'bahub_historico';
+const CHAVE_HISTORICO = 'Planora_historico';
 const chaveHistorico = () => CHAVE_HISTORICO + sufixoWs();
 const LIMITE_HISTORICO = 20;
 let estadosHistorico = [];
@@ -86,7 +86,7 @@ let aplicandoHistorico = false;
 let erroPersistenciaHistorico = false;
 
 function notificarHistorico() {
-    window.dispatchEvent(new Event('bahub-historico-atualizado'));
+    window.dispatchEvent(new Event('Planora-historico-atualizado'));
 }
 function persistirHistorico() {
     try {
@@ -159,10 +159,10 @@ function aplicarEstadoHistorico(indice) {
     }
     indiceHistorico = indice;
     persistirHistorico();
-    window.dispatchEvent(new CustomEvent('bahub-dados-restaurados', { detail: { dados } }));
+    window.dispatchEvent(new CustomEvent('Planora-dados-restaurados', { detail: { dados } }));
     notificarHistorico();
 }
-window.BAHUB_Historico = {
+window.Planora_Historico = {
     podeDesfazer: () => indiceHistorico > 0,
     podeRefazer: () => indiceHistorico >= 0 && indiceHistorico < estadosHistorico.length - 1,
     desfazer: () => {
@@ -360,9 +360,9 @@ function limparCacheLocal() {
     for (const k of Object.keys(sessionStorage)) {
         if (k === CHAVE_HISTORICO || k.startsWith(CHAVE_HISTORICO + ':') || k === SESSAO_WS) sessionStorage.removeItem(k);
     }
-    localStorage.removeItem('bahub_visao');
-    localStorage.removeItem('bahub_ordenacao');
-    localStorage.removeItem('bahub_kanban_colunas');
+    localStorage.removeItem('Planora_visao');
+    localStorage.removeItem('Planora_ordenacao');
+    localStorage.removeItem('Planora_kanban_colunas');
 }
 /* Garante que nada pendente fique para trás antes de sair/trocar. Devolve true se está tudo na nuvem. */
 async function garantirEnvioPendente() {
@@ -418,8 +418,8 @@ async function criarWorkspace(nome, dadosIniciais) {
     listaWorkspaces.push(novo);
     return novo;
 }
-/* Quem ainda não tem workspace "inicial" mas tem linha em bahub_dados (ex.: criou conta depois da cópia)
-   ganha um workspace com os dados copiados sem transformação. Só LÊ bahub_dados. */
+/* Quem ainda não tem workspace "inicial" mas tem linha em Planora_dados (ex.: criou conta depois da cópia)
+   ganha um workspace com os dados copiados sem transformação. Só LÊ Planora_dados. */
 async function migrarLegadoSePreciso(lista) {
     if (!MIGRAR_LEGADO_SOB_DEMANDA || lista.some(w => w.legacy_user_id === usuario.id)) return null;
     const { data, error } = await sb.from(TABELA_LEGADO).select('dados,atualizado_em').eq('user_id', usuario.id).maybeSingle();
@@ -517,7 +517,7 @@ async function ativarWorkspace(ws, importouLocal) {
     if (importouLocal) await sincronizarMidiasLocais();
     setStatus('Salvo na nuvem');
     reenviarPendentes();
-    window.dispatchEvent(new Event('bahub-workspace-atualizado'));
+    window.dispatchEvent(new Event('Planora-workspace-atualizado'));
     return true;
 }
 /* Troca de workspace: envia o que estiver pendente e recarrega na raiz do novo workspace.
@@ -560,7 +560,7 @@ async function renomearWorkspaceInterativo(id) {
     const atualizado = listaWorkspaces.find(w => w.id === id);
     if (atualizado) atualizado.nome = data.nome;
     if (workspaceAtual && workspaceAtual.id === id) workspaceAtual.nome = data.nome;
-    window.dispatchEvent(new Event('bahub-workspace-atualizado'));
+    window.dispatchEvent(new Event('Planora-workspace-atualizado'));
     return true;
 }
 function itensParaTransferencia(dadosOrigem, indice) {
@@ -632,17 +632,17 @@ async function transferirProjetoWorkspace(dadosOrigem, indice, destinoId) {
     salvarBancoDeDados(dadosOrigem);
     const salvoNaOrigem = await descarregarNuvem();
     if (!salvoNaOrigem) {
-        window.dispatchEvent(new CustomEvent('bahub-dados-restaurados', { detail: { dados: dadosOrigem } }));
-        window.dispatchEvent(new Event('bahub-workspace-atualizado'));
+        window.dispatchEvent(new CustomEvent('Planora-dados-restaurados', { detail: { dados: dadosOrigem } }));
+        window.dispatchEvent(new Event('Planora-workspace-atualizado'));
         const erro = new Error(`O item foi copiado para o destino, mas a remoção na origem não foi confirmada. Verifique os dois workspaces antes de repetir.`);
         erro.destinoGravado = true;
         throw erro;
     }
-    window.dispatchEvent(new CustomEvent('bahub-dados-restaurados', { detail: { dados: dadosOrigem } }));
-    window.dispatchEvent(new Event('bahub-workspace-atualizado'));
+    window.dispatchEvent(new CustomEvent('Planora-dados-restaurados', { detail: { dados: dadosOrigem } }));
+    window.dispatchEvent(new Event('Planora-workspace-atualizado'));
     return true;
 }
-window.BAHUB_Workspaces = {
+window.Planora_Workspaces = {
     get lista() { return listaWorkspaces.slice(); },
     get atual() { return workspaceAtual; },
     selecionar: trocarWorkspace,
@@ -733,9 +733,9 @@ function telaBoasVindas(lista) {
         o.innerHTML = `<button class="btn-tema ws-theme-toggle" id="ws-tema" type="button" aria-label="Ativar modo claro" title="Ativar modo claro"></button>
             <main class="ws-conteudo">
                 <header class="ws-hero">
-                    <div class="ws-marca" aria-hidden="true">BA</div>
+                    <div class="ws-marca" aria-hidden="true">PNR</div>
                     <p class="ws-ola">${vazio ? 'Que bom ter você aqui' : 'Olá'}, <strong>${primeiroNome}</strong></p>
-                    <h1>Bem-vindo ao <span>BAHUB</span></h1>
+                    <h1>Bem-vindo ao <span>Planora</span></h1>
                     <p class="ws-sub">${vazio
                         ? 'Vamos começar criando seu primeiro workspace, um espaço só seu para organizar projetos, páginas e cards.'
                         : 'Entre em um dos seus workspaces para continuar de onde parou, ou crie um novo espaço separado para outro contexto.'}</p>
@@ -773,7 +773,7 @@ function telaBoasVindas(lista) {
             btnTema.addEventListener('click', () => {
                 const novo = document.documentElement.dataset.tema === 'claro' ? 'escuro' : 'claro';
                 document.documentElement.dataset.tema = novo;
-                try { localStorage.setItem('bahub_tema', novo); } catch (e) { /* sem armazenamento */ }
+                try { localStorage.setItem('Planora_tema', novo); } catch (e) { /* sem armazenamento */ }
                 const meta = document.querySelector('meta[name="theme-color"]');
                 if (meta) meta.content = novo === 'claro' ? '#f1f5f9' : '#111827';
                 atualizarBotaoTema();
@@ -872,7 +872,7 @@ async function iniciarBanco() {
         } else {
             alvo = workspaceDaSessao(listaWorkspaces);
             if (!alvo) {
-                window.BAHUB_REDIRECIONANDO_WORKSPACES = true;
+                window.Planora_REDIRECIONANDO_WORKSPACES = true;
                 location.replace(urlTelaWorkspaces(location.pathname + location.search + location.hash));
                 return;
             }
@@ -890,13 +890,13 @@ async function iniciarBanco() {
     await ativarWorkspace(alvo, importouLocal);
     if (paginaWorkspaces) location.replace(urlRetornoWorkspaces());
 }
-const BAHUB_PRONTO = iniciarBanco().catch(e => { console.error(e); setStatus('Erro de conexão'); });
+const Planora_PRONTO = iniciarBanco().catch(e => { console.error(e); setStatus('Erro de conexão'); });
 
 /* ---------- mídias: cache em IndexedDB + arquivo no Supabase Storage ---------- */
 let _idb = null;
 function abrirBancoMidia() {
     return _idb || (_idb = new Promise((ok, err) => {
-        const r = indexedDB.open('bahub_midia_db', 1);
+        const r = indexedDB.open('Planora_midia_db', 1);
         r.onupgradeneeded = () => r.result.createObjectStore('arquivos');
         r.onsuccess = () => ok(r.result);
         r.onerror = () => err(r.error);
@@ -916,7 +916,7 @@ async function enviarMidia(id, blob, tipo) {
     const { error } = await sb.storage.from(BUCKET).upload(usuario.id + '/' + id, blob, { contentType: tipo, upsert: true });
     if (error) throw error;
 }
-const PENDENTES = 'bahub_midias_pendentes';
+const PENDENTES = 'Planora_midias_pendentes';
 const lerPendentes = () => JSON.parse(localStorage.getItem(PENDENTES) || '[]');
 async function salvarMidiaBlob(blob, tipo) {
     if (!blob) return null;

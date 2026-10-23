@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#111827">
-    <title>BAHUB</title>
-    <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
+    <title>Planora</title>
+    <script>try{if(localStorage.getItem('Planora_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
     <link rel="stylesheet" href="css/style.css?v=20261023-20">
 </head>
 
@@ -204,8 +204,8 @@
 </div>
 
 
-<footer class="footer-bahub">
-    <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
+<footer class="footer-Planora">
+    <span class="ponto"></span><strong>Planora</strong><span>© 2026</span>
     <span id="status-nuvem" class="status-nuvem" role="img" aria-label="Status da nuvem"></span>
     <span id="email-usuario" class="email-usuario"></span>
     <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
@@ -234,17 +234,17 @@ if (ordenacaoSalva && ['nome', 'rotulo', 'area', 'prazo'].includes(ordenacaoSalv
 
 
 const ordemRotulos = [
-    'Em andamento',
-    'Esperando',
-    'Atrasado',
     'A ser feito',
+    'Atrasado',
+    'Esperando',
+    'Em andamento',
     'Pronto'
 ];
 
 
 let opcoesRotulos =
     JSON.parse(
-        localStorage.getItem('bahub_opcoes_rotulos')
+        localStorage.getItem('Planora_opcoes_rotulos')
     ) || [
         {
             nome:'Em andamento',
@@ -281,12 +281,12 @@ opcoesRotulos.sort((a, b) => {
 const rotuloEsperando = opcoesRotulos.find(r => r.nome === 'Esperando');
 if (rotuloEsperando && rotuloEsperando.cor !== '#a855f7') {
     rotuloEsperando.cor = '#a855f7';
-    localStorage.setItem('bahub_opcoes_rotulos', JSON.stringify(opcoesRotulos));
+    localStorage.setItem('Planora_opcoes_rotulos', JSON.stringify(opcoesRotulos));
 }
 
 let opcoesArea =
     JSON.parse(
-        localStorage.getItem('bahub_opcoes_area')
+        localStorage.getItem('Planora_opcoes_area')
     ) || [
         'Projeto',
         'Melhoria',
@@ -299,12 +299,12 @@ let opcoesArea =
 function salvarOpcoesGlobais() {
 
     localStorage.setItem(
-        'bahub_opcoes_rotulos',
+        'Planora_opcoes_rotulos',
         JSON.stringify(opcoesRotulos)
     );
 
     localStorage.setItem(
-        'bahub_opcoes_area',
+        'Planora_opcoes_area',
         JSON.stringify(opcoesArea)
     );
 
@@ -704,7 +704,7 @@ function escapeHTML(v) {
 }
 
 async function moverProjetoParaWorkspace(index) {
-    const api = window.BAHUB_Workspaces;
+    const api = window.Planora_Workspaces;
     const item = db[index];
     if (!api || !item) return;
     const destinos = api.lista.filter(ws => ws.id !== api.atual.id);
@@ -1344,7 +1344,7 @@ function indicesParaArrastar(index) {
 function iniciarSelecaoRetangular(e) {
     if (e.button !== 0 || !e.target.closest) return;
     if (!document.body.contains(e.target) || e.target.closest(
-        '.topo, .cabecalho-pagina, .footer-bahub, .modal-overlay, .lg-overlay, .pop-tags, .painel-lateral, .fundo-painel-lateral, ' +
+        '.topo, .cabecalho-pagina, .footer-Planora, .modal-overlay, .lg-overlay, .pop-tags, .painel-lateral, .fundo-painel-lateral, ' +
         '.kb-card, .kb-col-topo, #corpo-tabela tr, thead, button, input, select, textarea, a'
     )) return;
     if (!e.ctrlKey && !e.metaKey) limparSelecaoCards();
@@ -1736,9 +1736,9 @@ function ehDescendente(paiId, filhoId) {
 }
 
 function atualizarCaminho() {
-    if (!window.BAHUB_Topo) return;
+    if (!window.Planora_Topo) return;
     const cadeia = caminhoDaPasta(pastaAtual);
-    BAHUB_Topo.definirCaminho(cadeia.map((f, i) => ({
+    Planora_Topo.definirCaminho(cadeia.map((f, i) => ({
         nome: f.nome, pasta: f.id, href: i < cadeia.length - 1 ? 'index.html?pasta=' + f.id : null
     })));
 }
@@ -1969,7 +1969,7 @@ window.aoNovaPasta = criarPasta;
 const _renderizarTabelaBase = renderizarTabela;
 renderizarTabela = function () { _renderizarTabelaBase(); atualizarBarraOrdem(); atualizarCaminho(); aplicarBusca(); aplicarVisao(); };
 
-window.addEventListener('bahub-dados-restaurados', e => {
+window.addEventListener('Planora-dados-restaurados', e => {
     db = e.detail.dados;
     renderizarTabela();
 });
@@ -1978,8 +1978,8 @@ renderizarTabela();
 
 </script>
 <script>
-BAHUB_PRONTO.then(() => {
-    if (window.BAHUB_REDIRECIONANDO_WORKSPACES) return;
+Planora_PRONTO.then(() => {
+    if (window.Planora_REDIRECIONANDO_WORKSPACES) return;
     const s = document.createElement('script');
     s.textContent = document.getElementById('app-script').textContent;
     document.body.appendChild(s);

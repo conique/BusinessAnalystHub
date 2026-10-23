@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#111827">
-    <title>BAHUB - Timeline do Projeto</title>
-    <script>try{if(localStorage.getItem('bahub_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
+    <title>Planora - Timeline do Projeto</title>
+    <script>try{if(localStorage.getItem('Planora_tema')==='claro'){document.documentElement.dataset.tema='claro';document.querySelector('meta[name="theme-color"]').content='#f1f5f9'}}catch(e){}</script>
     <link rel="stylesheet" href="css/style.css?v=20261023-20">
 </head>
 <body class="fundo-original">
@@ -98,8 +98,8 @@
 
     </div>
 
-    <footer class="footer-bahub">
-    <span class="ponto"></span><strong>Business Analyst Hub</strong><span>© 2026</span>
+    <footer class="footer-Planora">
+    <span class="ponto"></span><strong>Planora</strong><span>© 2026</span>
     <span id="status-nuvem" class="status-nuvem" role="img" aria-label="Status da nuvem"></span>
     <span id="email-usuario" class="email-usuario"></span>
     <button type="button" class="btn-rodape" onclick="sairDaConta()">Sair</button>
@@ -301,11 +301,11 @@
         }
 
         /* ---------- Editar os dados do projeto (título, rótulo, área, prazo e tags) na própria página ---------- */
-        const ROTULOS_ORDEM = ['Em andamento', 'Esperando', 'Atrasado', 'A ser feito', 'Pronto'];
+        const ROTULOS_ORDEM = ['A ser feito', 'Atrasado', 'Esperando', 'Em andamento', 'Pronto'];
 
         function listaRotulosEdicao() {
             let nomes = [];
-            try { nomes = (JSON.parse(localStorage.getItem('bahub_opcoes_rotulos')) || []).map(r => r.nome); } catch (e) { /* padrão */ }
+            try { nomes = (JSON.parse(localStorage.getItem('Planora_opcoes_rotulos')) || []).map(r => r.nome); } catch (e) { /* padrão */ }
             ROTULOS_ORDEM.forEach(n => { if (!nomes.includes(n)) nomes.push(n); });
             return nomes.sort((a, b) => {
                 const i = ROTULOS_ORDEM.indexOf(a), j = ROTULOS_ORDEM.indexOf(b);
@@ -314,7 +314,7 @@
         }
         function listaAreasEdicao() {
             let a = null;
-            try { a = JSON.parse(localStorage.getItem('bahub_opcoes_area')); } catch (e) { /* padrão */ }
+            try { a = JSON.parse(localStorage.getItem('Planora_opcoes_area')); } catch (e) { /* padrão */ }
             return Array.isArray(a) && a.length ? a : ['Projeto', 'Melhoria', 'Tarefa', 'Gerais', 'BI e SSAPM'];
         }
         function preencherSelect(id, lista, atual) {
@@ -523,11 +523,11 @@
 
             /*
              * Usa exatamente a mesma cor do rótulo
-             * utilizado na tabela/menu do BAHUB.
+             * utilizado na tabela/menu do Planora.
              */
             const opcoesRotulos =
                 JSON.parse(
-                    localStorage.getItem('bahub_opcoes_rotulos')
+                    localStorage.getItem('Planora_opcoes_rotulos')
                 ) || [
                     { nome: 'Em andamento', cor: 'blue' },
                     { nome: 'Pronto', cor: 'green' },
@@ -1924,7 +1924,7 @@
         const _renderizarTimelineBase = renderizarTimeline;
 renderizarTimeline = async function () {
     await _renderizarTimelineBase();
-    if (window.BAHUB_Topo) {
+    if (window.Planora_Topo) {
         const cadeia = [];
         let pid = projetoAtual.pai, guarda = 0;
         while (pid && guarda++ < 50) {
@@ -1933,7 +1933,7 @@ renderizarTimeline = async function () {
             cadeia.unshift(f);
             pid = f.pai;
         }
-        BAHUB_Topo.definirCaminho([
+        Planora_Topo.definirCaminho([
             ...cadeia.map(f => ({ nome: f.nome, pasta: f.id, href: 'index.html?pasta=' + f.id })),
             { nome: projetoAtual.nome }
         ]);
@@ -1945,7 +1945,7 @@ renderizarTimeline = async function () {
     ajustarTodasLegendas();
 };
 
-window.addEventListener('bahub-dados-restaurados', e => {
+window.addEventListener('Planora-dados-restaurados', e => {
     db = e.detail.dados;
     projetoAtual = db[projetoId];
     if (!projetoAtual) {
@@ -1971,8 +1971,8 @@ window.addEventListener('bahub-dados-restaurados', e => {
 
     </script>
 <script>
-BAHUB_PRONTO.then(() => {
-    if (window.BAHUB_REDIRECIONANDO_WORKSPACES) return;
+Planora_PRONTO.then(() => {
+    if (window.Planora_REDIRECIONANDO_WORKSPACES) return;
     const s = document.createElement('script');
     s.textContent = document.getElementById('app-script').textContent;
     document.body.appendChild(s);

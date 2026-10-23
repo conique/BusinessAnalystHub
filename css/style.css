@@ -1,4 +1,4 @@
-/* BAHUB — tema VS Code Dark+, cards escuros e pílulas */
+/* Planora — tema VS Code Dark+, cards escuros e pílulas */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root{
@@ -19,7 +19,7 @@ body{margin:0;min-height:100vh;background:var(--bg-pagina);color:var(--texto);fo
   background-size:auto,auto,44px 44px,44px 44px;background-attachment:fixed;
   -webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
 body.fundo-original{background-image:none;background-attachment:scroll}
-body>:not(header):not(.footer-bahub):not(script):not(.modal-overlay):not(.lg-overlay):not(.pop-tags):not(.ghost-arrasto):not(.caixa-selecao):not(.painel-lateral):not(.fundo-painel-lateral):not(.menu-tabela-flutuante):not(.menu-card-flutuante){
+body>:not(header):not(.footer-Planora):not(script):not(.modal-overlay):not(.lg-overlay):not(.pop-tags):not(.ghost-arrasto):not(.caixa-selecao):not(.painel-lateral):not(.fundo-painel-lateral):not(.menu-tabela-flutuante):not(.menu-card-flutuante){
   width:100%;max-width:1380px;margin-left:auto;margin-right:auto;padding-left:24px;padding-right:24px}
 ::selection{background:var(--accent);color:#fff}
 button,input,textarea,select{font-family:inherit}
@@ -29,10 +29,15 @@ button,input,textarea,select{font-family:inherit}
 
 /* ---------- Topo ---------- */
 .topo{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;
-  padding:14px 24px;margin:0 0 28px;border-bottom:1px solid rgba(255,255,255,.06);
-  background:var(--surface-cabecalho);
-  backdrop-filter:blur(10px)}
-.topo{justify-content:space-between;flex-wrap:wrap}
+  padding:14px 24px;margin:0 0 28px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.45);
+-webkit-backdrop-filter:blur(16px) saturate(150%);
+backdrop-filter:blur(16px) saturate(150%);
+  justify-content:space-between;flex-wrap:wrap}
+
+.topo::after{content:"";position:absolute;bottom:-1px;left:0;width:100%;height:1px;
+  background:rgba(16,185,129,.85);pointer-events:none}
 .topo-esq,.topo-dir{display:flex;align-items:center;gap:12px}
 .topo-dir>.btn-tema{margin-left:auto}
 .topo-dir>.topo-visao,.topo-dir>.controle-historico,.topo-dir>.busca,.topo-dir>.btn-novo,.topo-dir>.btn-tema{height:36px}
@@ -65,15 +70,15 @@ button,input,textarea,select{font-family:inherit}
 .migalha-link{color:#fff;font-weight:500;text-decoration:none}
 .migalha-link:hover{text-decoration:underline}
 .migalha-atual{color:#34d399;font-weight:500;letter-spacing:.01em}
-.busca{position:relative;display:flex;align-items:center;width:224px}
+.busca{position:relative;display:flex;align-items:center;width:224px;padding:2px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:rgba(255,255,255,.04);}
 .busca svg{position:absolute;left:10px;color:#737373;pointer-events:none}
-.busca input{width:100%;padding:7px 12px 7px 32px;font-size:12px;background:#3c3c3c;border:1px solid #3e3e42;border-radius:8px;color:var(--texto)}
+.busca input{width:100%;padding:7px 12px 7px 32px;font-size:12px;background:transparent;border:0;border-radius:8px;color:var(--texto)}
 .busca input::placeholder{color:#858585}
-.busca input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.busca input:focus{outline:0;box-shadow:none}
 .btn-novo{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--accent-btn);color:#1e1e1e;border:0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);transition:.15s}
 .btn-novo:hover{background:var(--accent-btn-h)}
 .btn-novo:active{transform:scale(.96)}
-.marca-ba{text-decoration:none;width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);
+.marca-P{text-decoration:none;width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);
   color:#34d399;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .titulo-projeto{margin:0;font-size:15px;font-weight:500;color:#34d399;letter-spacing:.01em}
 .cabecalho-pagina .titulo-projeto{font-size:clamp(18px,2.4vw,24px);font-weight:600;color:#fff;letter-spacing:-.01em}
@@ -229,17 +234,17 @@ tbody tr.em-edicao{background:#37373d;cursor:default}
 .btn-cancelar-edicao:hover{background:#3e3e42}
 
 /* ---------- Rodapé ---------- */
-.footer-bahub{margin-top:auto;padding:16px 24px;background:#181818;border-top:1px solid rgba(255,255,255,.06);
+.footer-Planora{margin-top:auto;padding:16px 24px;background:#181818;border-top:1px solid rgba(255,255,255,.06);
   display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:center;font-size:12px;color:#a3a3a3}
-.footer-bahub .ponto{width:8px;height:8px;border-radius:50%;background:var(--accent-btn)}
-.footer-bahub strong{color:#cccccc;font-weight:500}
+.footer-Planora .ponto{width:8px;height:8px;border-radius:50%;background:var(--accent-btn)}
+.footer-Planora strong{color:#cccccc;font-weight:500}
 body{padding-bottom:0}
 body>.timeline-container,body>#conteudo-tabela,body>#estado-vazio{margin-bottom:48px}
 
 @media(max-width:700px){
   .topo{padding:12px 16px}
   .busca{width:150px}
-  body>:not(header):not(.footer-bahub):not(script):not(.modal-overlay):not(.lg-overlay):not(.pop-tags):not(.ghost-arrasto):not(.caixa-selecao):not(.painel-lateral):not(.fundo-painel-lateral):not(.menu-tabela-flutuante):not(.menu-card-flutuante){padding-left:12px;padding-right:12px}
+  body>:not(header):not(.footer-Planora):not(script):not(.modal-overlay):not(.lg-overlay):not(.pop-tags):not(.ghost-arrasto):not(.caixa-selecao):not(.painel-lateral):not(.fundo-painel-lateral):not(.menu-tabela-flutuante):not(.menu-card-flutuante){padding-left:12px;padding-right:12px}
   .timeline-container{padding-left:40px!important}
   .timeline-container::before{left:16px}
   .form-novo-card,.timeline-card{padding:20px 18px;border-radius:20px}
@@ -447,7 +452,7 @@ img,video{max-width:100%;height:auto}
   .label-file{padding:8px 14px}
 
   /* rodapé */
-  .footer-bahub{padding:14px 12px;font-size:11px;gap:6px 12px;text-align:center}
+  .footer-Planora{padding:14px 12px;font-size:11px;gap:6px 12px;text-align:center}
 }
 
 /* alvos de toque maiores em telas sensíveis ao toque */
@@ -566,18 +571,21 @@ html[data-tema="claro"]{
 html[data-tema="claro"] ::-webkit-scrollbar-track{background:#f1f5f9}
 html[data-tema="claro"] ::-webkit-scrollbar-thumb{background:#cbd5e1}
 
-/* cabeçalho */
+/* cabeçalho — glass no modo claro */
 html[data-tema="claro"] .topo{border-bottom-color:rgba(15,23,42,.08);
-  background:var(--surface-cabecalho)}
+  background:rgba(255,255,255,.72);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  backdrop-filter:blur(16px) saturate(150%)}
+html[data-tema="claro"] .topo::after{background:rgba(16,185,129,.85)}
 html[data-tema="claro"] .migalha-link{color:#0f172a}
-html[data-tema="claro"] .migalha-atual,html[data-tema="claro"] .marca-ba{color:#4b5563}
+html[data-tema="claro"] .migalha-atual,html[data-tema="claro"] .marca-P{color:#4b5563}
 html[data-tema="claro"] .btn-menu-lateral{background:transparent;color:#475569}
 html[data-tema="claro"] .btn-menu-lateral:hover,html[data-tema="claro"] .btn-menu-lateral[aria-expanded="true"]{background:transparent;color:#0f172a}
 html[data-tema="claro"] .painel-lateral{background:#f8f8f8;border-right-color:#e2e8f0;box-shadow:12px 0 30px rgba(15,23,42,.15)}
 html[data-tema="claro"] .btn-fechar-painel{color:#64748b}
 html[data-tema="claro"] .btn-fechar-painel:hover{background:#e2e8f0;color:#0f172a}
 html[data-tema="claro"] .migalha .sep{color:#94a3b8}
-html[data-tema="claro"] .marca-ba{background:rgba(15,23,42,.06);border-color:rgba(15,23,42,.2)}
+html[data-tema="claro"] .marca-P{background:rgba(15,23,42,.06);border-color:rgba(15,23,42,.2)}
 html[data-tema="claro"] .busca input{background:#fff;border-color:#cbd5e1;color:#0f172a}
 html[data-tema="claro"] .busca input::placeholder{color:#94a3b8}
 html[data-tema="claro"] .busca svg{color:#94a3b8}
@@ -652,8 +660,8 @@ html[data-tema="claro"] .seletor-tipo{border-color:#3e3e42}
 html[data-tema="claro"] .card-tipo-tag{background:#2d2d30;color:#fff}
 
 /* rodapé e login */
-html[data-tema="claro"] .footer-bahub{background:#fff;border-top-color:#e2e8f0;color:#64748b}
-html[data-tema="claro"] .footer-bahub strong{color:#334155}
+html[data-tema="claro"] .footer-Planora{background:#fff;border-top-color:#e2e8f0;color:#64748b}
+html[data-tema="claro"] .footer-Planora strong{color:#334155}
 html[data-tema="claro"] .email-usuario{color:#475569}
 html[data-tema="claro"] .status-nuvem[data-estado="salvo"]{color:#059669}
 html[data-tema="claro"] .status-nuvem[data-estado="salvando"]{color:#059669}
@@ -670,7 +678,7 @@ tr.linha-voltar td,tr.linha-vazia td{color:var(--texto-2);font-size:13px}
 tr.linha-voltar .col-nome{color:var(--texto-2);font-weight:500}
 tr.linha-vazia td{text-align:center;padding:28px 14px}
 tr.drop-dentro{background:rgba(75,85,99,.15)!important;box-shadow:inset 0 0 0 2px var(--accent-btn)}
-.migalha-link.drop-dentro,.marca-ba.drop-dentro{outline:2px solid var(--accent-btn);outline-offset:3px;border-radius:6px}
+.migalha-link.drop-dentro,.marca-P.drop-dentro{outline:2px solid var(--accent-btn);outline-offset:3px;border-radius:6px}
 /* ---------- Kanban (visão por rótulo) ---------- */
 .visao-toggle{display:inline-flex;padding:2px;border:1px solid var(--borda);border-radius:9999px}
 .visao-toggle button{border:0;background:transparent;color:var(--texto-2);padding:4px 12px;border-radius:9999px;
@@ -868,3 +876,23 @@ html[data-tema="claro"] .ws-btn-novo-workspace:hover,html[data-tema="claro"] .ws
 .ws-painel-acao.principal{color:#06281b;background:var(--accent-btn);border-color:transparent}
 .ws-painel-acao.principal:hover{background:var(--accent-btn-h)}
 html[data-tema="claro"] .ws-painel-acao.principal{color:#fff;background:#059669}
+
+/* ---------- Animação ao clicar ---------- */
+button,[role="button"],.btn-menu-lateral,.ws-painel-item{
+  transition:transform .12s ease,filter .15s ease,background-color .15s ease,border-color .15s ease,color .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+button:active:not(:disabled),[role="button"]:active,.ws-painel-item:active:not(:disabled){
+  transform:scale(.97);
+  filter:brightness(.94);
+}
+button:disabled{cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){
+  button,[role="button"],.btn-menu-lateral,.ws-painel-item{transition:none!important}
+  button:active:not(:disabled),[role="button"]:active,.ws-painel-item:active:not(:disabled){transform:none;filter:none}
+}
+
+/* ---------- Ícone do menu: gira para ||| ao abrir ---------- */
+.btn-menu-lateral svg{transform:rotate(0deg);transform-origin:center;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.btn-menu-lateral[aria-expanded="true"] svg{transform:rotate(90deg)}
+@media(prefers-reduced-motion:reduce){.btn-menu-lateral svg{transition:none!important}}

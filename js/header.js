@@ -1,4 +1,4 @@
-/* Cabeçalho padrão do BAHUB — usado em todas as páginas.
+/* Cabeçalho padrão do Planora — usado em todas as páginas.
    Cada página define (opcionalmente): window.aoBuscar(texto) e window.aoNovoRegistro().
    Com data-simples="true" no <header>, mostra só a logo e o caminho (sem busca nem botão). */
 (function () {
@@ -12,7 +12,7 @@
             <button class="btn-menu-lateral" id="topo-menu-lateral" type="button" title="Abrir painel lateral" aria-label="Abrir painel lateral" aria-expanded="false" aria-controls="painel-lateral">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-            <a class="marca-ba" href="workspaces.html" data-pasta="" data-drop-pasta="" title="Workspaces" aria-label="Voltar para workspaces">BA</a>
+            <a class="marca-P" href="workspaces.html" data-pasta="" data-drop-pasta="" title="Workspaces" aria-label="Voltar para workspaces">PNR</a>
             <nav class="migalha" id="migalha" aria-label="Navegação"></nav>
         </div>
         <div class="topo-dir${simples ? ' solo' : ''}">
@@ -168,7 +168,7 @@
     btnTema.addEventListener('click', () => {
         const novo = document.documentElement.dataset.tema === 'claro' ? 'escuro' : 'claro';
         document.documentElement.dataset.tema = novo;
-        try { localStorage.setItem('bahub_tema', novo); } catch (e) { /* sem armazenamento */ }
+        try { localStorage.setItem('Planora_tema', novo); } catch (e) { /* sem armazenamento */ }
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.content = novo === 'claro' ? '#f1f5f9' : '#111827';
         atualizarBotaoTema();
@@ -178,23 +178,23 @@
     const btnDesfazer = document.getElementById('topo-desfazer');
     const btnRefazer = document.getElementById('topo-refazer');
     function atualizarHistorico() {
-        const historico = window.BAHUB_Historico;
+        const historico = window.Planora_Historico;
         btnDesfazer.disabled = !historico || !historico.podeDesfazer();
         btnRefazer.disabled = !historico || !historico.podeRefazer();
     }
     btnDesfazer.addEventListener('click', () => {
-        if (window.BAHUB_Historico) window.BAHUB_Historico.desfazer();
+        if (window.Planora_Historico) window.Planora_Historico.desfazer();
     });
     btnRefazer.addEventListener('click', () => {
-        if (window.BAHUB_Historico) window.BAHUB_Historico.refazer();
+        if (window.Planora_Historico) window.Planora_Historico.refazer();
     });
-    window.addEventListener('bahub-historico-atualizado', atualizarHistorico);
+    window.addEventListener('Planora-historico-atualizado', atualizarHistorico);
     atualizarHistorico();
 
     /* Workspaces da conta: lista no painel lateral e nome do workspace aberto no início do caminho. */
     const painelWs = document.getElementById('painel-ws');
     function desenharWorkspaces() {
-        const api = window.BAHUB_Workspaces;
+        const api = window.Planora_Workspaces;
         if (!api || !api.atual) return;
         nomeRaiz = api.atual.nome;
         montarCaminho(segsAtuais);
@@ -248,15 +248,15 @@
         acoes.append(novo);
         painelWs.append(lista, acoes);
     }
-    window.addEventListener('bahub-workspace-atualizado', desenharWorkspaces);
+    window.addEventListener('Planora-workspace-atualizado', desenharWorkspaces);
     desenharWorkspaces();
 
-    document.querySelector('.marca-ba').addEventListener('click', e => {
-        const api = window.BAHUB_Workspaces;
+    document.querySelector('.marca-P').addEventListener('click', e => {
+        const api = window.Planora_Workspaces;
         if (!api || typeof api.telaInicial !== 'function') return;
         e.preventDefault();
         api.telaInicial();
     });
 
-    window.BAHUB_Topo = { definirAtual: montarMigalha, definirCaminho: montarCaminho };
+    window.Planora_Topo = { definirAtual: montarMigalha, definirCaminho: montarCaminho };
 })();
